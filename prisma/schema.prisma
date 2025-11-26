@@ -1,0 +1,151 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Journey {
+  id                    String            @id @default(cuid())
+  originCity            String
+  destinationCity       String
+  originLat             Float
+  originLng             Float
+  destinationLat        Float
+  destinationLng        Float
+  driverName            String
+  driverPhone           String
+  vehicleNumber         String
+  startTime             DateTime
+  plannedETA            DateTime
+  fleetType             String
+  transporterName       String
+  notes                 String?
+  status                JourneyStatus     @default(NOT_STARTED)
+  currentEtaMinutes     Float?
+  currentDistanceToDestKm Float?
+  assignedLoadId        String?
+  assignedLoad          Load?             @relation(fields: [assignedLoadId], references: [id])
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  
+  callLogs              CallLog[]
+  simulationEvents      SimulationEvent[]
+
+  @@index([status])
+  @@index([originCity])
+  @@index([destinationCity])
+  @@index([driverName])
+  @@index([vehicleNumber])
+  @@index([transporterName])
+}
+
+enum JourneyStatus {
+  NOT_STARTED
+  IN_TRANSIT
+  NEAR_DESTINATION
+  UNLOADING
+  COMPLETED
+  STOPPAGE
+}
+
+model Load {
+  id                      String      @id @default(cuid())
+  pickupCity              String
+  pickupLat               Float
+  pickupLng               Float
+  dropCity                String
+  dropLat                 Float
+  dropLng                 Float
+  commodity               String
+  rate                    Float
+  expectedReportingTime   DateTime
+  expectedUnloadingTime   DateTime?
+  mode                    String
+  vehicleType             String
+  specialInstructions     String?
+  slaHours                Int?
+  status                  LoadStatus  @default(AVAILABLE)
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+  
+  callLogs                CallLog[]
+  journeys                Journey[]
+
+  @@index([status])
+  @@index([pickupCity])
+  @@index([dropCity])
+  @@index([commodity])
+  @@index([vehicleType])
+}
+
+enum LoadStatus {
+  AVAILABLE
+  OFFERED
+  ASSIGNED
+  EXHAUSTED
+}
+
+model CallLog {
+  id                  String        @id @default(cuid())
+  journeyId           String
+  journey             Journey       @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  loadId              String
+  load                Load          @relation(fields: [loadId], references: [id], onDelete: Cascade)
+  ringgCallId         String?
+  status              CallStatus    @default(INITIATED)
+  outcome             CallOutcome   @default(UNKNOWN)
+  rawRequestPayload   Json
+  rawWebhookPayload   Json?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([journeyId])
+  @@index([loadId])
+  @@index([ringgCallId])
+}
+
+enum CallStatus {
+  INITIATED
+  COMPLETED
+}
+
+enum CallOutcome {
+  ACCEPTED
+  REJECTED
+  NO_ANSWER
+  FAILED
+  BUSY
+  UNKNOWN
+}
+
+model SimulationEvent {
+  id          String            @id @default(cuid())
+  journeyId   String
+  journey     Journey           @relation(fields: [journeyId], references: [id], onDelete: Cascade)
+  timestamp   DateTime          @default(now())
+  type        EventType
+  label       String
+  details     Json
+  createdAt   DateTime          @default(now())
+
+  @@index([journeyId])
+  @@index([timestamp])
+}
+
+enum EventType {
+  INFO
+  TRACKING
+  CALL
+  WEBHOOK
+  LOAD
+  ERROR
+  STATE_CHANGE
+  STOPPAGE
+}
+
