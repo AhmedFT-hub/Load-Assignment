@@ -260,15 +260,25 @@ export default function Dashboard() {
       return
     }
 
-    // Calculate active route and total distance (use detour route if on detour)
+    // Calculate active route and total distance
+    // When at risk, always use original routePath (don't skip points)
+    // When on detour, use detourRoute
+    // Otherwise, use original routePath
     const activeRoute = isOnDetour && detourRoute ? detourRoute : routePath
     let activeTotalDistance = totalDistanceKm
+    
+    // If on detour, recalculate total distance for detour route
     if (isOnDetour && detourRoute && detourRoute.length > 1) {
-      // Recalculate total distance for detour route
       activeTotalDistance = 0
       for (let i = 1; i < detourRoute.length; i++) {
         activeTotalDistance += calculateDistance(detourRoute[i - 1], detourRoute[i])
       }
+    }
+    
+    // Ensure routePath is not empty when at risk
+    if (isAtRisk && (!routePath || routePath.length === 0)) {
+      console.warn('At risk but routePath is empty, skipping tick')
+      return
     }
 
     // Update progress

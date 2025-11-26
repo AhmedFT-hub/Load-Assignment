@@ -490,46 +490,92 @@ export default function MapboxMapView({
                   style={{ filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.5))' }}
                 >
                   {/* TOP VIEW TRUCK - Front points UP (North at 0°) */}
-                  
-                  {/* Cargo/trailer area (back) */}
-                  <rect x="8" y="20" width="24" height="35" rx="2" fill="#60a5fa" stroke="#1e40af" strokeWidth="1.5"/>
-                  
-                  {/* Cargo details/lines */}
-                  <line x1="12" y1="25" x2="28" y2="25" stroke="#1e40af" strokeWidth="0.8" opacity="0.5"/>
-                  <line x1="12" y1="35" x2="28" y2="35" stroke="#1e40af" strokeWidth="0.8" opacity="0.5"/>
-                  <line x1="12" y1="45" x2="28" y2="45" stroke="#1e40af" strokeWidth="0.8" opacity="0.5"/>
-                  
-                  {/* Truck cabin (front) */}
-                  <path 
-                    d="M 10 20 L 8 15 Q 8 8 12 5 L 28 5 Q 32 8 32 15 L 30 20 Z" 
-                    fill="#2563eb" 
-                    stroke="#1e40af" 
-                    strokeWidth="1.5"
-                  />
-                  
-                  {/* Windshield */}
-                  <ellipse cx="20" cy="12" rx="8" ry="5" fill="#93c5fd" opacity="0.8"/>
-                  <line x1="20" y1="7" x2="20" y2="17" stroke="#1e40af" strokeWidth="0.8" opacity="0.3"/>
-                  
-                  {/* Side mirrors */}
-                  <rect x="4" y="14" width="3" height="4" rx="1" fill="#1e40af" stroke="#fff" strokeWidth="0.5"/>
-                  <rect x="33" y="14" width="3" height="4" rx="1" fill="#1e40af" stroke="#fff" strokeWidth="0.5"/>
-                  
-                  {/* Front wheels */}
-                  <rect x="6" y="16" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
-                  <rect x="31" y="16" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
-                  
-                  {/* Rear wheels */}
-                  <rect x="6" y="48" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
-                  <rect x="31" y="48" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
-                  
-                  {/* Direction indicator - arrow on top of cabin */}
-                  <path 
-                    d="M 20 2 L 23 6 L 21 6 L 21 8 L 19 8 L 19 6 L 17 6 Z" 
-                    fill="#fbbf24" 
-                    stroke="#fff" 
-                    strokeWidth="0.5"
-                  />
+                  {/* Colors change to red when at risk */}
+                  {isAtRisk ? (
+                    <>
+                      {/* Cargo/trailer area (back) - RED */}
+                      <rect x="8" y="20" width="24" height="35" rx="2" fill="#f87171" stroke="#dc2626" strokeWidth="1.5"/>
+                      
+                      {/* Cargo details/lines - RED */}
+                      <line x1="12" y1="25" x2="28" y2="25" stroke="#dc2626" strokeWidth="0.8" opacity="0.5"/>
+                      <line x1="12" y1="35" x2="28" y2="35" stroke="#dc2626" strokeWidth="0.8" opacity="0.5"/>
+                      <line x1="12" y1="45" x2="28" y2="45" stroke="#dc2626" strokeWidth="0.8" opacity="0.5"/>
+                      
+                      {/* Truck cabin (front) - RED */}
+                      <path 
+                        d="M 10 20 L 8 15 Q 8 8 12 5 L 28 5 Q 32 8 32 15 L 30 20 Z" 
+                        fill="#ef4444" 
+                        stroke="#dc2626" 
+                        strokeWidth="1.5"
+                      />
+                      
+                      {/* Windshield - RED tint */}
+                      <ellipse cx="20" cy="12" rx="8" ry="5" fill="#fca5a5" opacity="0.8"/>
+                      <line x1="20" y1="7" x2="20" y2="17" stroke="#dc2626" strokeWidth="0.8" opacity="0.3"/>
+                      
+                      {/* Side mirrors - RED */}
+                      <rect x="4" y="14" width="3" height="4" rx="1" fill="#dc2626" stroke="#fff" strokeWidth="0.5"/>
+                      <rect x="33" y="14" width="3" height="4" rx="1" fill="#dc2626" stroke="#fff" strokeWidth="0.5"/>
+                      
+                      {/* Front wheels */}
+                      <rect x="6" y="16" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
+                      <rect x="31" y="16" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
+                      
+                      {/* Rear wheels */}
+                      <rect x="6" y="48" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
+                      <rect x="31" y="48" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
+                      
+                      {/* Direction indicator - arrow on top of cabin - RED */}
+                      <path 
+                        d="M 20 2 L 23 6 L 21 6 L 21 8 L 19 8 L 19 6 L 17 6 Z" 
+                        fill="#dc2626" 
+                        stroke="#fff" 
+                        strokeWidth="0.5"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      {/* Cargo/trailer area (back) - BLUE */}
+                      <rect x="8" y="20" width="24" height="35" rx="2" fill="#60a5fa" stroke="#1e40af" strokeWidth="1.5"/>
+                      
+                      {/* Cargo details/lines - BLUE */}
+                      <line x1="12" y1="25" x2="28" y2="25" stroke="#1e40af" strokeWidth="0.8" opacity="0.5"/>
+                      <line x1="12" y1="35" x2="28" y2="35" stroke="#1e40af" strokeWidth="0.8" opacity="0.5"/>
+                      <line x1="12" y1="45" x2="28" y2="45" stroke="#1e40af" strokeWidth="0.8" opacity="0.5"/>
+                      
+                      {/* Truck cabin (front) - BLUE */}
+                      <path 
+                        d="M 10 20 L 8 15 Q 8 8 12 5 L 28 5 Q 32 8 32 15 L 30 20 Z" 
+                        fill="#2563eb" 
+                        stroke="#1e40af" 
+                        strokeWidth="1.5"
+                      />
+                      
+                      {/* Windshield - BLUE */}
+                      <ellipse cx="20" cy="12" rx="8" ry="5" fill="#93c5fd" opacity="0.8"/>
+                      <line x1="20" y1="7" x2="20" y2="17" stroke="#1e40af" strokeWidth="0.8" opacity="0.3"/>
+                      
+                      {/* Side mirrors - BLUE */}
+                      <rect x="4" y="14" width="3" height="4" rx="1" fill="#1e40af" stroke="#fff" strokeWidth="0.5"/>
+                      <rect x="33" y="14" width="3" height="4" rx="1" fill="#1e40af" stroke="#fff" strokeWidth="0.5"/>
+                      
+                      {/* Front wheels */}
+                      <rect x="6" y="16" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
+                      <rect x="31" y="16" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
+                      
+                      {/* Rear wheels */}
+                      <rect x="6" y="48" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
+                      <rect x="31" y="48" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
+                      
+                      {/* Direction indicator - arrow on top of cabin - YELLOW */}
+                      <path 
+                        d="M 20 2 L 23 6 L 21 6 L 21 8 L 19 8 L 19 6 L 17 6 Z" 
+                        fill="#fbbf24" 
+                        stroke="#fff" 
+                        strokeWidth="0.5"
+                      />
+                    </>
+                  )}
                 </svg>
               </div>
             </Marker>

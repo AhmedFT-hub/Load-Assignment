@@ -12,6 +12,13 @@ export interface RinggCallRequest {
   etaMinutes?: number
 }
 
+export interface RinggDetourCallRequest {
+  driverName: string
+  driverPhone: string
+  zoneName?: string
+  currentPosition?: { lat: number; lng: number }
+}
+
 export interface RinggCallResponse {
   success: boolean
   callId?: string
@@ -20,7 +27,7 @@ export interface RinggCallResponse {
 }
 
 /**
- * Initiate a call via Ringg.ai API
+ * Initiate a call via Ringg.ai API (for load assignment)
  * @param request - Call request details
  * @returns Promise with call response
  */
@@ -81,6 +88,96 @@ export async function initiateCall(
     return {
       success: false,
       error: 'Failed to initiate call: Unknown error',
+    }
+  }
+}
+
+/**
+ * Initiate a detour/redzone call via Ringg.ai API
+ * Uses the production API endpoint format
+ * @param request - Detour call request details
+ * @returns Promise with call response
+ */
+export async function initiateDetourCall(
+  request: RinggDetourCallRequest
+): Promise<RinggCallResponse> {
+  const apiToken = process.env.RINGG_API_TOKEN || process.env.RINGG_API_KEY
+  const fromNumberId = process.env.RINGG_FROM_NUMBER_ID
+  const agentId = process.env.RINGG_AGENT_ID
+  const endpoint = process.env.RINGG_DETOUR_ENDPOINT || 'https://prod-api.ringg.ai/ca/api/v0/calling/outbound/individual'
+
+  if (!apiToken) {
+    throw new Error('RINGG_API_TOKEN or RINGG_API_KEY is not configured')
+  }
+
+  if (!fromNumberId) {
+    throw new Error('RINGG_FROM_NUMBER_ID is not configured')
+  }
+
+  if (!agentId) {
+    throw new Error('RINGG_AGENT_ID is not configured')
+  }
+
+  // Format phone number (ensure it starts with +)
+  const mobileNumber = request.driverPhone.startsWith('+') 
+    ? request.driverPhone 
+    : `+${request.driverPhone}`
+
+  const payload = {
+    name: request.driverName.toUpperCase(),
+    from_number_id: fromNumberId,
+    agent_id: agentId,
+    custom_args_values: {
+      callee_name: request.driverName.toUpperCase(),
+      mobile_number: mobileNumber,
+      zone_name: request.zoneName || 'Redzone',
+      current_position: request.currentPosition 
+        ? `${request.currentPosition.lat},${request.currentPosition.lng}` 
+        : undefined,
+    },
+    mobile_number: mobileNumber,
+  }
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiToken}`,
+        'Accept': 'application/json, text/plain, */*',
+      },
+      body: JSON.stringify(payload),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      console.error('Ringg API error:', data)
+      return {
+        success: false,
+        error: data.error || data.message || `API error: ${response.status}`,
+      }
+    }
+
+    // Extract call ID from response (adjust based on actual response structure)
+    const callId = data.call_id || data.callId || data.id || data.data?.call_id
+
+    return {
+      success: true,
+      callId: callId,
+      message: data.message || 'Detour call initiated successfully',
+    }
+  } catch (error) {
+    console.error('Failed to initiate detour call:', error)
+    if (error instanceof Error) {
+      return {
+        success: false,
+        error: `Failed to initiate detour call: ${error.message}`,
+      }
+    }
+    return {
+      success: false,
+      error: 'Failed to initiate detour call: Unknown error',
     }
   }
 }

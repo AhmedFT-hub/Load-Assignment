@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { initiateCall } from '@/lib/ringgClient'
+import { initiateDetourCall } from '@/lib/ringgClient'
 
 // POST /api/journeys/[id]/trigger-detour-call - Trigger detour call for redzone
 export async function POST(
@@ -38,14 +38,12 @@ export async function POST(
       },
     })
 
-    // Initiate call via Ringg.ai for detour
-    const ringgResponse = await initiateCall({
-      journeyId: journey.id,
-      loadId: '', // No load ID for detour
+    // Initiate call via Ringg.ai for detour using the detour-specific endpoint
+    const ringgResponse = await initiateDetourCall({
       driverName: journey.driverName,
       driverPhone: journey.driverPhone,
-      vehicleNumber: journey.vehicleNumber,
-      currentLocation: currentPosition ? { lat: currentPosition.lat, lng: currentPosition.lng } : undefined,
+      zoneName: zoneName,
+      currentPosition: currentPosition ? { lat: currentPosition.lat, lng: currentPosition.lng } : undefined,
     })
 
     // Update call log with Ringg response
