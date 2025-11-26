@@ -143,20 +143,25 @@ export async function initiateDetourCall(
   const now = new Date()
   const scheduledAt = now.toISOString()
 
+  // Build custom_args_values (only include defined values)
+  const customArgsValues: Record<string, string> = {
+    callee_name: request.driverName.toUpperCase(),
+    mobile_number: mobileNumber,
+    zone_name: request.zoneName || 'Redzone',
+  }
+  
+  // Add current_position only if provided
+  if (request.currentPosition) {
+    customArgsValues.current_position = `${request.currentPosition.lat},${request.currentPosition.lng}`
+  }
+
   const payload = {
     name: request.driverName.toUpperCase(),
     mobile_number: mobileNumber,
     agent_id: agentId,
     from_number: formattedFromNumber,
-    custom_args_values: {
-      callee_name: request.driverName.toUpperCase(),
-      mobile_number: mobileNumber,
-      zone_name: request.zoneName || 'Redzone',
-      current_position: request.currentPosition 
-        ? `${request.currentPosition.lat},${request.currentPosition.lng}` 
-        : undefined,
-    },
-      call_config: {
+    custom_args_values: customArgsValues,
+    call_config: {
       idle_timeout_warning: 10,
       idle_timeout_end: 15,
       max_call_length: 300,
