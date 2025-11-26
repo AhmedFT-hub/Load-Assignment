@@ -102,8 +102,10 @@ export default function MapPinCard({
                         onClose?.()
                       }}
                       className={`text-xs font-semibold px-3 py-1.5 rounded transition-colors ${
-                        action.action === 'detour'
+                        action.action === 'detour' || action.action === 'accept-load'
                           ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : action.action === 'continue'
+                          ? 'bg-orange-600 hover:bg-orange-700 text-white'
                           : 'bg-red-600 hover:bg-red-700 text-white'
                       }`}
                     >

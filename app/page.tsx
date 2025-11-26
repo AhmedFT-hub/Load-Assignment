@@ -57,6 +57,7 @@ export default function Dashboard() {
   const [callLogs, setCallLogs] = useState<CallLog[]>([])
   const [isWaitingForCall, setIsWaitingForCall] = useState(false)
   const [nearDestinationTriggered, setNearDestinationTriggered] = useState(false)
+  const [pendingLoad, setPendingLoad] = useState<any | null>(null) // Store load info when call is triggered
   const [isInGeofence, setIsInGeofence] = useState(false)
   const [geofenceEntered, setGeofenceEntered] = useState(false)
   const [nextLoadRoutes, setNextLoadRoutes] = useState<{
@@ -759,18 +760,7 @@ export default function Dashboard() {
     if (!selectedJourney || isWaitingForCall) return
 
     setIsWaitingForCall(true)
-    // Add map pin alert at truck location
-    if (truckPosition) {
-      setMapAlerts(prev => [...prev, {
-        id: 'call-initiated',
-        position: truckPosition,
-        title: 'Load Assignment Call Initiated',
-        message: 'Calling driver for next load assignment. Waiting for response...',
-        type: 'warning',
-        show: true,
-      }])
-    }
-
+    
     try {
       const response = await fetch(`/api/journeys/${selectedJourney.id}/trigger-call`, {
         method: 'POST',
@@ -779,12 +769,31 @@ export default function Dashboard() {
       const data = await response.json()
 
       if (response.ok) {
+        // Store the pending load
+        setPendingLoad(data.load)
         setCallLogs(prev => [data.callLog, ...prev])
+        
         await addEvent({
           type: 'CALL',
           label: `Call initiated for load: ${data.load.pickupCity} → ${data.load.dropCity}`,
           details: data,
         })
+        
+        // Add map pin alert at truck location with Accept/Reject buttons
+        if (truckPosition) {
+          setMapAlerts(prev => [...prev, {
+            id: 'call-initiated',
+            position: truckPosition,
+            title: 'Load Assignment Call',
+            message: `Load available: ${data.load.pickupCity} → ${data.load.dropCity}. Choose an action:`,
+            type: 'warning',
+            show: true,
+            actions: [
+              { label: 'Accept Load', action: 'accept-load' },
+              { label: 'Reject Load', action: 'reject-load' },
+            ],
+          }])
+        }
       } else {
         await addEvent({
           type: 'ERROR',
@@ -796,6 +805,123 @@ export default function Dashboard() {
       console.error('Error triggering call:', error)
     } finally {
       setIsWaitingForCall(false)
+    }
+  }
+
+  const handleAcceptLoad = async () => {
+    if (!pendingLoad || !selectedJourney || !truckPosition) return
+
+    try {
+      // Plot path from current position to load pickup location
+      const response = await fetch('/api/directions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          origin: truckPosition,
+          destination: { lat: pendingLoad.pickupLat, lng: pendingLoad.pickupLng },
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const pickupPath = convertMapboxCoordinates(data.routes[0].geometry.coordinates)
+        
+        // Calculate total distance
+        let totalDistance = 0
+        for (let i = 1; i < pickupPath.length; i++) {
+          totalDistance += calculateDistance(pickupPath[i - 1], pickupPath[i])
+        }
+        
+        // Update route to go to pickup location
+        setRoutePath(pickupPath)
+        setTotalDistanceKm(totalDistance)
+        setProgress(0)
+        setCompletedPath([truckPosition]) // Start from current position
+        
+        // Update journey with assigned load
+        await fetch(`/api/journeys/${selectedJourney.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assignedLoadId: pendingLoad.id,
+          }),
+        })
+        
+        // Update load status
+        await fetch(`/api/loads/${pendingLoad.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'ASSIGNED',
+          }),
+        })
+        
+        await addEvent({
+          type: 'LOAD',
+          label: `Load accepted - Routing to pickup: ${pendingLoad.pickupCity}`,
+          details: {
+            loadId: pendingLoad.id,
+            pickupCity: pendingLoad.pickupCity,
+            dropCity: pendingLoad.dropCity,
+          },
+        })
+        
+        // Update map alert
+        setMapAlerts(prev => prev.map(alert => 
+          alert.id === 'call-initiated'
+            ? { ...alert, title: 'Load Accepted', message: `Routing to pickup: ${pendingLoad.pickupCity}`, type: 'success', show: false }
+            : alert
+        ))
+        
+        // Clear pending load and resume simulation
+        setPendingLoad(null)
+        setIsSimulating(true)
+        setJourneyStatus('IN_TRANSIT')
+      }
+    } catch (error) {
+      console.error('Error accepting load:', error)
+      await addEvent({
+        type: 'ERROR',
+        label: `Error accepting load: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        details: { loadId: pendingLoad?.id },
+      })
+    }
+  }
+
+  const handleRejectLoad = async () => {
+    if (!pendingLoad) return
+
+    try {
+      // Update load status back to AVAILABLE
+      await fetch(`/api/loads/${pendingLoad.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'AVAILABLE',
+        }),
+      })
+      
+      await addEvent({
+        type: 'CALL',
+        label: `Load rejected: ${pendingLoad.pickupCity} → ${pendingLoad.dropCity}`,
+        details: { loadId: pendingLoad.id },
+      })
+      
+      // Update map alert
+      setMapAlerts(prev => prev.map(alert => 
+        alert.id === 'call-initiated'
+          ? { ...alert, title: 'Load Rejected', message: 'Load assignment rejected', type: 'error', show: false }
+          : alert
+      ))
+      
+      // Clear pending load
+      setPendingLoad(null)
+      
+      // Resume simulation on original route
+      setIsSimulating(true)
+      setJourneyStatus('IN_TRANSIT')
+    } catch (error) {
+      console.error('Error rejecting load:', error)
     }
   }
 
@@ -1071,6 +1197,10 @@ export default function Dashboard() {
               handleDetourAction()
             } else if (action === 'continue') {
               handleContinueOnSameRoute()
+            } else if (action === 'accept-load') {
+              handleAcceptLoad()
+            } else if (action === 'reject-load') {
+              handleRejectLoad()
             }
           }}
           zones={zones}
