@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { Journey, SimulationEvent, CallLog, JourneyStatus } from '@/types'
+import { Journey, SimulationEvent, CallLog, JourneyStatus, Zone } from '@/types'
 import JourneySelector from '@/components/journeys/JourneySelector'
 import SimulationControls from '@/components/simulation/SimulationControls'
 import JourneyInfoCard from '@/components/journeys/JourneyInfoCard'
 import CallStatusCard from '@/components/calls/CallStatusCard'
 import EventTimeline from '@/components/events/EventTimeline'
+import ZonesTab from '@/components/zones/ZonesTab'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { convertMapboxCoordinates, calculateDistance } from '@/lib/directions'
@@ -71,9 +72,28 @@ export default function Dashboard() {
     type: 'info' | 'success' | 'warning' | 'error'
     show: boolean
   }>>([])
+  const [zones, setZones] = useState<Zone[]>([])
+  const [isDrawingZone, setIsDrawingZone] = useState(false)
+  const [drawingCoordinates, setDrawingCoordinates] = useState<Array<{ lat: number; lng: number }>>([])
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
 
   const simulationInterval = useRef<NodeJS.Timeout | null>(null)
   const lastTickTime = useRef<number>(Date.now())
+
+  // Fetch zones
+  useEffect(() => {
+    fetchZones()
+  }, [])
+
+  const fetchZones = async () => {
+    try {
+      const response = await fetch('/api/zones')
+      const data = await response.json()
+      setZones(data)
+    } catch (error) {
+      console.error('Error fetching zones:', error)
+    }
+  }
 
   // Fetch journey details and initialize route
   const loadJourney = useCallback(async (journey: Journey) => {
@@ -602,6 +622,11 @@ export default function Dashboard() {
           nextLoadRoute={nextLoadRoutes || undefined}
           alerts={mapAlerts}
           onAlertClose={(id) => setMapAlerts(prev => prev.filter(alert => alert.id !== id))}
+          zones={zones}
+          isDrawingZone={isDrawingZone}
+          onZoneComplete={(coords) => {
+            setDrawingCoordinates(coords)
+          }}
         />
       </div>
 
@@ -618,6 +643,9 @@ export default function Dashboard() {
               </TabsTrigger>
               <TabsTrigger value="events" className="rounded-none data-[state=active]:bg-background flex-1">
                 Events
+              </TabsTrigger>
+              <TabsTrigger value="zones" className="rounded-none data-[state=active]:bg-background flex-1">
+                Zones
               </TabsTrigger>
             </TabsList>
           </div>
@@ -685,6 +713,32 @@ export default function Dashboard() {
                     Select a journey to view events
                   </div>
                 )}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="zones" className="flex-1 mt-0 overflow-hidden">
+            <ScrollArea className="h-[calc(100vh-8rem)]">
+              <div className="px-3 py-4">
+                <ZonesTab
+                  onZoneSelect={(zone) => {
+                    setSelectedZoneId(zone.id)
+                  }}
+                  selectedZoneId={selectedZoneId}
+                  onStartDrawing={() => {
+                    setIsDrawingZone(true)
+                    setDrawingCoordinates([])
+                  }}
+                  onFinishDrawing={(coords) => {
+                    setIsDrawingZone(false)
+                    setDrawingCoordinates(coords.length > 0 ? coords : [])
+                    if (coords.length === 0) {
+                      fetchZones()
+                    }
+                  }}
+                  drawingCoordinates={drawingCoordinates}
+                  isDrawing={isDrawingZone}
+                />
               </div>
             </ScrollArea>
           </TabsContent>

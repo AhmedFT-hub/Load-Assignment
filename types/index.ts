@@ -102,3 +102,23 @@ export interface SimulationEvent {
   createdAt: string | Date
 }
 
+export type ZoneCategory = 
+  | 'THEFT'
+  | 'PILFERAGE'
+  | 'STOPPAGE'
+  | 'HIGH_RISK'
+  | 'ACCIDENT_PRONE'
+  | 'TRAFFIC_CONGESTION'
+  | 'CUSTOM'
+
+export interface Zone {
+  id: string
+  name: string
+  category: ZoneCategory
+  coordinates: Array<{ lat: number; lng: number }>
+  description?: string | null
+  color?: string | null
+  createdAt: string | Date
+  updatedAt: string | Date
+}
+

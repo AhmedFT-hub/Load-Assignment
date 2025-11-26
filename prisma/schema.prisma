@@ -149,3 +149,27 @@ enum EventType {
   STOPPAGE
 }
 
+model Zone {
+  id          String      @id @default(cuid())
+  name        String
+  category    ZoneCategory
+  coordinates Json        // Array of {lat, lng} points forming polygon
+  description String?
+  color       String?     // Hex color for visualization
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([category])
+  @@index([name])
+}
+
+enum ZoneCategory {
+  THEFT
+  PILFERAGE
+  STOPPAGE
+  HIGH_RISK
+  ACCIDENT_PRONE
+  TRAFFIC_CONGESTION
+  CUSTOM
+}
+

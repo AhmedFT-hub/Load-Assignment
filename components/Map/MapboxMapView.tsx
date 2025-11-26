@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Map, { Marker, Source, Layer, MapRef } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import MapPinCard from './MapPinCard'
+import { Zone } from '@/types'
 
 const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ''
 
@@ -31,6 +32,9 @@ interface MapboxMapViewProps {
     show: boolean
   }>
   onAlertClose?: (id: string) => void
+  zones?: Zone[]
+  isDrawingZone?: boolean
+  onZoneComplete?: (coordinates: Array<{ lat: number; lng: number }>) => void
 }
 
 // Helper function to create a circle (geofence) around a point
@@ -78,6 +82,9 @@ export default function MapboxMapView({
   nextLoadRoute,
   alerts = [],
   onAlertClose,
+  zones = [],
+  isDrawingZone = false,
+  onZoneComplete,
 }: MapboxMapViewProps) {
   const mapRef = useRef<MapRef>(null)
   const [viewState, setViewState] = useState({
@@ -85,6 +92,7 @@ export default function MapboxMapView({
     latitude: 20.5937,
     zoom: 4,
   })
+  const [drawingPoints, setDrawingPoints] = useState<Array<{ lat: number; lng: number }>>([])
 
   // Auto-fit bounds when route changes
   useEffect(() => {
@@ -150,14 +158,67 @@ export default function MapboxMapView({
   // 10km geofence around destination
   const destinationGeofence = destination ? createGeoJSONCircle(destination, 10) : null
 
+  // Convert zones to GeoJSON
+  const zonesGeoJSON = zones.map(zone => ({
+    type: 'Feature' as const,
+    properties: {
+      id: zone.id,
+      name: zone.name,
+      category: zone.category,
+      color: zone.color,
+    },
+    geometry: {
+      type: 'Polygon' as const,
+      coordinates: [[...zone.coordinates.map(p => [p.lng, p.lat]), zone.coordinates[0] ? [zone.coordinates[0].lng, zone.coordinates[0].lat] : []]],
+    },
+  }))
+
+  // Drawing polygon GeoJSON
+  const drawingPolygonGeoJSON = drawingPoints.length >= 3 ? {
+    type: 'Feature' as const,
+    properties: {},
+    geometry: {
+      type: 'Polygon' as const,
+      coordinates: [[...drawingPoints.map(p => [p.lng, p.lat]), drawingPoints[0] ? [drawingPoints[0].lng, drawingPoints[0].lat] : []]],
+    },
+  } : null
+
+  // Handle map click for zone drawing
+  const handleMapClick = (e: any) => {
+    if (!isDrawingZone) return
+    
+    const { lng, lat } = e.lngLat
+    const newPoints = [...drawingPoints, { lat, lng }]
+    setDrawingPoints(newPoints)
+    
+    // If we have at least 3 points, allow completion
+    if (newPoints.length >= 3 && onZoneComplete) {
+      // Don't auto-complete, let user finish manually
+    }
+  }
+
+  // Reset drawing when mode changes
+  useEffect(() => {
+    if (!isDrawingZone) {
+      setDrawingPoints([])
+    }
+  }, [isDrawingZone])
+
   return (
     <div className="w-full h-full relative">
+      {isDrawingZone && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium">
+          Click on map to draw zone polygon. Click 3+ points, then click "Finish" button.
+        </div>
+      )}
       <Map
         ref={mapRef}
         {...viewState}
         onMove={evt => setViewState(evt.viewState)}
+        onClick={handleMapClick}
         mapStyle="mapbox://styles/mapbox/streets-v12"
         mapboxAccessToken={mapboxToken}
+        cursor={isDrawingZone ? 'crosshair' : 'default'}
       >
         {/* Origin marker */}
         {origin && (
@@ -220,6 +281,64 @@ export default function MapboxMapView({
             />
           </Source>
         )}
+
+        {/* Zones */}
+        {zonesGeoJSON.map((zoneGeoJSON, index) => {
+          const zone = zones[index]
+          const color = zone.color || '#6366f1'
+          return (
+            <Source key={zone.id} id={`zone-${zone.id}`} type="geojson" data={zoneGeoJSON}>
+              <Layer
+                id={`zone-fill-${zone.id}`}
+                type="fill"
+                paint={{
+                  'fill-color': color,
+                  'fill-opacity': 0.2,
+                }}
+              />
+              <Layer
+                id={`zone-outline-${zone.id}`}
+                type="line"
+                paint={{
+                  'line-color': color,
+                  'line-width': 2,
+                  'line-opacity': 0.8,
+                }}
+              />
+            </Source>
+          )
+        })}
+
+        {/* Drawing polygon */}
+        {drawingPolygonGeoJSON && (
+          <Source id="drawing-polygon" type="geojson" data={drawingPolygonGeoJSON}>
+            <Layer
+              id="drawing-polygon-fill"
+              type="fill"
+              paint={{
+                'fill-color': '#3b82f6',
+                'fill-opacity': 0.15,
+              }}
+            />
+            <Layer
+              id="drawing-polygon-outline"
+              type="line"
+              paint={{
+                'line-color': '#3b82f6',
+                'line-width': 2,
+                'line-opacity': 0.8,
+                'line-dasharray': [2, 2],
+              }}
+            />
+          </Source>
+        )}
+
+        {/* Drawing points */}
+        {isDrawingZone && drawingPoints.map((point, index) => (
+          <Marker key={index} longitude={point.lng} latitude={point.lat}>
+            <div className="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-lg" />
+          </Marker>
+        ))}
 
         {/* Planned route (dotted) - remaining path */}
         {routeGeoJSON && (
