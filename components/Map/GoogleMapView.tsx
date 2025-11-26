@@ -140,7 +140,6 @@ export default function GoogleMapView({
                 strokeColor: '#10b981',
                 strokeOpacity: 0.6,
                 strokeWeight: 3,
-                strokePattern: 'dashed',
               }}
             />
           )}
@@ -153,7 +152,6 @@ export default function GoogleMapView({
                 strokeColor: '#f59e0b',
                 strokeOpacity: 0.6,
                 strokeWeight: 3,
-                strokePattern: 'dashed',
               }}
             />
           )}
