@@ -134,6 +134,7 @@ export default function Dashboard() {
       // Convert Mapbox coordinates to our format
       const path = convertMapboxCoordinates(route.geometry.coordinates)
       setRoutePath(path)
+      setOriginalRoutePath(path) // Store original route for detour calculations
       
       // Set total distance (Mapbox returns meters)
       const distanceKm = route.distance / 1000
