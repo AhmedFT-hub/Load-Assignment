@@ -341,10 +341,18 @@ export default function Dashboard() {
       for (const zone of redzones) {
         // Calculate distance to zone polygon
         if (zone.coordinates && zone.coordinates.length >= 3) {
-          const distanceToZone = distanceToPolygon(position, zone.coordinates)
+          // Calculate distance to zone center (simpler and more reliable check)
+          const zoneCenter = zone.coordinates[0]
+          const distanceToZoneCenter = calculateDistance(position, zoneCenter)
           
-          // Check if within 10km of redzone boundary
-          if (distanceToZone <= 10 && distanceToZone > 0.5) {
+          // Also check distance to polygon boundary
+          const distanceToZoneBoundary = distanceToPolygon(position, zone.coordinates)
+          
+          // Use the minimum distance (either to center or boundary)
+          const distanceToZone = Math.min(distanceToZoneCenter, distanceToZoneBoundary)
+          
+          // Check if within 10km of redzone
+          if (distanceToZone <= 10) {
             setRedzoneAlertTriggered(zone.id)
             
             await addEvent({

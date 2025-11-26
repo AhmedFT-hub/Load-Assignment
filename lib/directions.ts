@@ -158,38 +158,45 @@ export function distanceToPolygon(
 }
 
 /**
- * Calculate distance from a point to a line segment
+ * Calculate distance from a point to a line segment using Haversine formula
  */
 function distanceToSegment(
   point: { lat: number; lng: number },
   segStart: { lat: number; lng: number },
   segEnd: { lat: number; lng: number }
 ): number {
-  const A = point.lat - segStart.lat
-  const B = point.lng - segStart.lng
-  const C = segEnd.lat - segStart.lat
-  const D = segEnd.lng - segStart.lng
+  // Calculate distances
+  const distToStart = calculateDistance(point, segStart)
+  const distToEnd = calculateDistance(point, segEnd)
+  const distSegment = calculateDistance(segStart, segEnd)
 
-  const dot = A * C + B * D
-  const lenSq = C * C + D * D
-  let param = -1
-
-  if (lenSq !== 0) param = dot / lenSq
-
-  let xx: number, yy: number
-
-  if (param < 0) {
-    xx = segStart.lat
-    yy = segStart.lng
-  } else if (param > 1) {
-    xx = segEnd.lat
-    yy = segEnd.lng
-  } else {
-    xx = segStart.lat + param * C
-    yy = segStart.lng + param * D
+  // If segment is very short, return distance to start
+  if (distSegment < 0.001) {
+    return distToStart
   }
 
-  const dx = point.lat - xx
-  const dy = point.lng - yy
-  return calculateDistance(point, { lat: xx, lng: yy })
+  // Calculate bearing from start to end
+  const bearingStartToEnd = calculateBearing(segStart, segEnd)
+  const bearingStartToPoint = calculateBearing(segStart, point)
+
+  // Calculate angle between segment and point
+  const angleDiff = Math.abs(bearingStartToEnd - bearingStartToPoint)
+  const angleRad = toRad(Math.min(angleDiff, 360 - angleDiff))
+
+  // Calculate perpendicular distance
+  const perpendicularDist = distToStart * Math.sin(angleRad)
+
+  // Check if perpendicular point is within segment
+  const distAlongSegment = distToStart * Math.cos(angleRad)
+  
+  if (distAlongSegment < 0) {
+    // Point is before start
+    return distToStart
+  } else if (distAlongSegment > distSegment) {
+    // Point is after end
+    return distToEnd
+  } else {
+    // Point projects onto segment
+    return Math.abs(perpendicularDist)
+  }
 }
