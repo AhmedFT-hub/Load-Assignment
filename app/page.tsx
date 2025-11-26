@@ -391,12 +391,57 @@ export default function Dashboard() {
             // Store zone for later use
             setRedzoneZone(zone)
             
+            // Trigger detour call automatically when redzone alert appears
+            if (selectedJourney && truckPosition) {
+              try {
+                const response = await fetch(`/api/journeys/${selectedJourney.id}/trigger-detour-call`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    zoneId: zone.id,
+                    zoneName: zone.name,
+                    currentPosition: truckPosition,
+                  }),
+                })
+
+                const data = await response.json()
+                
+                if (data.success) {
+                  setDetourCallStatus('pending')
+                  await addEvent({
+                    type: 'CALL',
+                    label: `Detour call initiated for redzone: ${zone.name}`,
+                    details: {
+                      zoneId: zone.id,
+                      zoneName: zone.name,
+                      callLogId: data.callLog?.id,
+                      ringgCallId: data.ringgResponse?.callId,
+                    },
+                  })
+                } else {
+                  console.error('Failed to initiate detour call:', data.error)
+                  await addEvent({
+                    type: 'ERROR',
+                    label: `Failed to initiate detour call: ${data.error || 'Unknown error'}`,
+                    details: { zoneName: zone.name },
+                  })
+                }
+              } catch (error) {
+                console.error('Error triggering detour call:', error)
+                await addEvent({
+                  type: 'ERROR',
+                  label: `Error triggering detour call: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                  details: { zoneName: zone.name },
+                })
+              }
+            }
+            
             // Add map alert with action buttons
             setMapAlerts(prev => [...prev, {
               id: `redzone-${zone.id}`,
               position,
               title: 'Redzone Alert',
-              message: `Approaching ${zone.name}. Choose an action:`,
+              message: `Approaching ${zone.name}. Detour call initiated. Choose an action:`,
               type: 'warning',
               show: true,
               actions: [

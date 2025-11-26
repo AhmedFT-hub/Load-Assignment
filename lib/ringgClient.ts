@@ -139,6 +139,9 @@ export async function initiateDetourCall(
   }
 
   try {
+    console.log('Initiating detour call to:', endpoint)
+    console.log('Payload:', JSON.stringify(payload, null, 2))
+    
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -149,18 +152,35 @@ export async function initiateDetourCall(
       body: JSON.stringify(payload),
     })
 
-    const data = await response.json()
+    const responseText = await response.text()
+    console.log('Ringg API response status:', response.status)
+    console.log('Ringg API response:', responseText)
+
+    let data
+    try {
+      data = JSON.parse(responseText)
+    } catch (e) {
+      // If response is not JSON, return error
+      return {
+        success: false,
+        error: `Invalid response format: ${responseText.substring(0, 200)}`,
+      }
+    }
 
     if (!response.ok) {
       console.error('Ringg API error:', data)
       return {
         success: false,
-        error: data.error || data.message || `API error: ${response.status}`,
+        error: data.error || data.message || data.detail || `API error: ${response.status} ${response.statusText}`,
       }
     }
 
     // Extract call ID from response (adjust based on actual response structure)
-    const callId = data.call_id || data.callId || data.id || data.data?.call_id
+    const callId = data.call_id || data.callId || data.id || data.data?.call_id || data.data?.id
+
+    if (!callId) {
+      console.warn('No call ID found in response:', data)
+    }
 
     return {
       success: true,

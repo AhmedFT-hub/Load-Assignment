@@ -46,6 +46,29 @@ export async function POST(
       currentPosition: currentPosition ? { lat: currentPosition.lat, lng: currentPosition.lng } : undefined,
     })
 
+    // Check if call was successful
+    if (!ringgResponse.success) {
+      console.error('Ringg call failed:', ringgResponse.error)
+      // Update call log with error
+      await prisma.callLog.update({
+        where: { id: callLog.id },
+        data: {
+          status: 'COMPLETED',
+          outcome: 'FAILED',
+          rawRequestPayload: {
+            ...(callLog.rawRequestPayload as any || {}),
+            error: ringgResponse.error,
+          },
+        },
+      })
+
+      return NextResponse.json({
+        success: false,
+        error: ringgResponse.error || 'Failed to initiate call',
+        callLog,
+      }, { status: 500 })
+    }
+
     // Update call log with Ringg response
     const rawPayload = callLog.rawRequestPayload as any || {}
     await prisma.callLog.update({
