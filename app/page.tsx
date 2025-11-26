@@ -70,12 +70,15 @@ export default function Dashboard() {
     message: string
     type: 'info' | 'success' | 'warning' | 'error'
     show: boolean
+    actions?: Array<{ label: string; action: string }>
   }>>([])
   const [zones, setZones] = useState<Zone[]>([])
   const [redzoneAlertTriggered, setRedzoneAlertTriggered] = useState<string | null>(null) // Zone ID that triggered alert
   const [detourRoute, setDetourRoute] = useState<Array<{ lat: number; lng: number }> | null>(null)
   const [isOnDetour, setIsOnDetour] = useState(false)
   const [detourCallStatus, setDetourCallStatus] = useState<'pending' | 'accepted' | 'rejected' | null>(null)
+  const [isAtRisk, setIsAtRisk] = useState(false)
+  const [redzoneZone, setRedzoneZone] = useState<Zone | null>(null)
 
   const simulationInterval = useRef<NodeJS.Timeout | null>(null)
   const lastTickTime = useRef<number>(Date.now())
@@ -359,18 +362,22 @@ export default function Dashboard() {
             setIsSimulating(false)
             setJourneyStatus('NEAR_DESTINATION')
             
-            // Add map alert
+            // Store zone for later use
+            setRedzoneZone(zone)
+            
+            // Add map alert with action buttons
             setMapAlerts(prev => [...prev, {
               id: `redzone-${zone.id}`,
               position,
               title: 'Redzone Alert',
-              message: `Approaching ${zone.name}. Detour call initiated.`,
+              message: `Approaching ${zone.name}. Choose an action:`,
               type: 'warning',
               show: true,
+              actions: [
+                { label: 'Detour', action: 'detour' },
+                { label: 'Continue on same route', action: 'continue' },
+              ],
             }])
-            
-            // Trigger detour call
-            triggerDetourCall(zone)
             break
           }
         }
@@ -444,6 +451,78 @@ export default function Dashboard() {
     redzoneAlertTriggered,
     isOnDetour,
   ])
+
+  const handleDetourAction = async () => {
+    if (!redzoneZone || !selectedJourney || !truckPosition) return
+
+    // Calculate and set detour route
+    const detour = await calculateDetourRoute(redzoneZone)
+    if (detour) {
+      // Calculate total distance for detour route
+      let detourTotalDistance = 0
+      for (let i = 1; i < detour.length; i++) {
+        detourTotalDistance += calculateDistance(detour[i - 1], detour[i])
+      }
+      
+      setDetourRoute(detour)
+      setRoutePath(detour) // Update route to detour
+      setTotalDistanceKm(detourTotalDistance) // Update total distance
+      setProgress(0) // Reset progress for new route
+      setCompletedPath([]) // Reset completed path
+      setIsOnDetour(true)
+      setIsAtRisk(false) // Clear at risk state
+      
+      await addEvent({
+        type: 'INFO',
+        label: `Detour route selected - Alternate route calculated`,
+        details: { zoneName: redzoneZone.name, detourDistance: detourTotalDistance.toFixed(2) },
+      })
+      
+      // Update map alert
+      setMapAlerts(prev => prev.map(alert => 
+        alert.id === `redzone-${redzoneZone.id}`
+          ? { ...alert, title: 'Detour Selected', message: 'Following alternate route', type: 'success', show: false }
+          : alert
+      ))
+      
+      // Resume simulation
+      setIsSimulating(true)
+      setJourneyStatus('IN_TRANSIT')
+    }
+  }
+
+  const handleContinueOnSameRoute = async () => {
+    if (!redzoneZone || !selectedJourney) return
+
+    setIsAtRisk(true)
+    setRedzoneAlertTriggered(null) // Clear alert trigger so it doesn't trigger again
+    
+    await addEvent({
+      type: 'WARNING',
+      label: `Journey marked as AT RISK - Continuing through redzone`,
+      details: { zoneName: redzoneZone.name },
+    })
+    
+    // Update journey status to AT_RISK
+    await fetch(`/api/journeys/${selectedJourney.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'AT_RISK',
+      }),
+    })
+    
+    // Update map alert
+    setMapAlerts(prev => prev.map(alert => 
+      alert.id === `redzone-${redzoneZone.id}`
+        ? { ...alert, title: 'At Risk', message: 'Journey marked as at risk', type: 'error', show: false }
+        : alert
+    ))
+    
+    // Resume simulation
+    setIsSimulating(true)
+    setJourneyStatus('AT_RISK')
+  }
 
   // Calculate alternate route avoiding redzones
   const calculateDetourRoute = async (zone: Zone) => {
@@ -818,9 +897,17 @@ export default function Dashboard() {
           nextLoadRoute={nextLoadRoutes || undefined}
           alerts={mapAlerts}
           onAlertClose={(id) => setMapAlerts(prev => prev.filter(alert => alert.id !== id))}
+          onAlertAction={(id, action) => {
+            if (action === 'detour') {
+              handleDetourAction()
+            } else if (action === 'continue') {
+              handleContinueOnSameRoute()
+            }
+          }}
           zones={zones}
           detourRoute={detourRoute}
           isOnDetour={isOnDetour}
+          isAtRisk={isAtRisk}
         />
       </div>
 

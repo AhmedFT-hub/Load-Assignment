@@ -7,6 +7,7 @@ export type JourneyStatus =
   | 'UNLOADING'
   | 'COMPLETED'
   | 'STOPPAGE'
+  | 'AT_RISK'
 
 export type LoadStatus = 'AVAILABLE' | 'OFFERED' | 'ASSIGNED' | 'EXHAUSTED'
 

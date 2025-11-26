@@ -11,6 +11,8 @@ interface MapPinCardProps {
   show: boolean
   autoClose?: number
   onClose?: () => void
+  actions?: Array<{ label: string; action: string }>
+  onAction?: (action: string) => void
 }
 
 export default function MapPinCard({
@@ -21,6 +23,8 @@ export default function MapPinCard({
   show,
   autoClose = 8000,
   onClose,
+  actions,
+  onAction,
 }: MapPinCardProps) {
   const [isVisible, setIsVisible] = useState(show)
 
@@ -85,7 +89,28 @@ export default function MapPinCard({
             <div className="text-xl">{style.icon}</div>
             <div className="flex-1">
               <h3 className={`font-bold text-sm ${style.text} mb-0.5`}>{title}</h3>
-              <p className="text-xs text-gray-700">{message}</p>
+              <p className="text-xs text-gray-700 mb-2">{message}</p>
+              {actions && actions.length > 0 && (
+                <div className="flex flex-col gap-1.5 mt-2">
+                  {actions.map((action, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        onAction?.(action.action)
+                        setIsVisible(false)
+                        onClose?.()
+                      }}
+                      className={`text-xs font-semibold px-3 py-1.5 rounded transition-colors ${
+                        action.action === 'detour'
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-red-600 hover:bg-red-700 text-white'
+                      }`}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             {onClose && (
               <button

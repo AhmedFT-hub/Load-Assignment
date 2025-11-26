@@ -30,8 +30,11 @@ interface MapboxMapViewProps {
     message: string
     type?: 'info' | 'success' | 'warning' | 'error'
     show: boolean
+    actions?: Array<{ label: string; action: string }>
   }>
   onAlertClose?: (id: string) => void
+  onAlertAction?: (id: string, action: string) => void
+  isAtRisk?: boolean
   zones?: Zone[]
   isDrawingZone?: boolean
   drawingCoordinates?: Array<{ lat: number; lng: number }>
@@ -85,7 +88,9 @@ export default function MapboxMapView({
   nextLoadRoute,
   alerts = [],
   onAlertClose,
+  onAlertAction,
   zones = [],
+  isAtRisk = false,
   isDrawingZone = false,
   drawingCoordinates = [],
   onZoneComplete,
@@ -465,7 +470,7 @@ export default function MapboxMapView({
               anchor="center"
             >
               <div
-                className={`${isStoppage ? 'animate-pulse' : ''}`}
+                className={`${isStoppage ? 'animate-pulse' : ''} ${isAtRisk ? 'animate-blink' : ''}`}
                 style={{ 
                   transform: `rotate(${truckHeading}deg)`,
                   transformOrigin: 'center center',
@@ -535,6 +540,20 @@ export default function MapboxMapView({
                 <div className="w-16 h-16 bg-red-500 rounded-full opacity-30 animate-ping" />
               </Marker>
             )}
+
+            {/* At Risk label */}
+            {isAtRisk && (
+              <Marker 
+                longitude={truckPosition.lng} 
+                latitude={truckPosition.lat}
+                anchor="bottom"
+                offset={[0, -50]}
+              >
+                <div className="bg-red-600 text-white px-2 py-1 rounded shadow-lg text-xs font-bold animate-blink">
+                  AT RISK
+                </div>
+              </Marker>
+            )}
           </>
         )}
 
@@ -548,6 +567,8 @@ export default function MapboxMapView({
             type={alert.type}
             show={alert.show}
             onClose={() => onAlertClose?.(alert.id)}
+            actions={alert.actions}
+            onAction={(action) => onAlertAction?.(alert.id, action)}
           />
         ))}
       </Map>
