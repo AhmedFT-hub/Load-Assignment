@@ -1,12 +1,14 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { MapPin, PackageSearch, Truck, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useEffect, useRef } from 'react'
 
 export default function Header() {
   const pathname = usePathname()
+  const router = useRouter()
+  const headerRef = useRef<HTMLElement>(null)
 
   const navigation = [
     {
@@ -35,24 +37,67 @@ export default function Header() {
     },
   ]
 
+  // Ensure header is always on top
+  useEffect(() => {
+    if (headerRef.current) {
+      headerRef.current.style.zIndex = '9999'
+      headerRef.current.style.pointerEvents = 'auto'
+    }
+  }, [])
+
+  const handleClick = (e: React.MouseEvent, href: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.nativeEvent.stopImmediatePropagation()
+    console.log('Navigating to:', href)
+    router.push(href)
+    window.location.href = href // Fallback
+  }
+
   return (
     <header 
-      className="sticky top-0 z-[100] w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
-      style={{ position: 'sticky', zIndex: 100 }}
+      ref={headerRef}
+      className="sticky top-0 z-[9999] w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+      style={{ 
+        position: 'sticky', 
+        zIndex: 9999,
+        pointerEvents: 'auto'
+      }}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     >
-      <div className="container flex h-16 items-center justify-center px-4 md:px-8" style={{ position: 'relative', zIndex: 101 }}>
-        <nav className="flex items-center space-x-1" style={{ position: 'relative', zIndex: 102 }}>
+      <div 
+        className="container flex h-16 items-center justify-center px-4 md:px-8" 
+        style={{ 
+          position: 'relative', 
+          zIndex: 10000,
+          pointerEvents: 'auto'
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <nav 
+          className="flex items-center space-x-1" 
+          style={{ 
+            position: 'relative', 
+            zIndex: 10001,
+            pointerEvents: 'auto'
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
           {navigation.map((item) => {
             const isActive = pathname === item.href
             const Icon = item.icon
             
             return (
-              <Link
+              <button
                 key={item.href}
-                href={item.href}
-                onClick={(e) => {
-                  console.log('Header link clicked:', item.href)
-                  // Allow default navigation
+                type="button"
+                onClick={(e) => handleClick(e, item.href)}
+                onMouseDown={(e) => {
+                  e.stopPropagation()
+                  e.nativeEvent.stopImmediatePropagation()
                 }}
                 className={cn(
                   "group inline-flex h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
@@ -60,11 +105,15 @@ export default function Header() {
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground"
                 )}
-                style={{ position: 'relative', zIndex: 103, pointerEvents: 'auto' }}
+                style={{ 
+                  position: 'relative', 
+                  zIndex: 10002,
+                  pointerEvents: 'auto'
+                }}
               >
                 <Icon className="mr-2 h-4 w-4" />
                 {item.name}
-              </Link>
+              </button>
             )
           })}
         </nav>
