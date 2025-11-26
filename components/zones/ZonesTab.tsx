@@ -130,8 +130,11 @@ export default function ZonesTab({
               </p>
               <div className="flex gap-2 justify-center mt-3">
                 {drawingCoordinates.length >= 3 && (
-                  <Button size="sm" onClick={() => onFinishDrawing?.(drawingCoordinates)}>
-                    Finish Drawing
+                  <Button size="sm" onClick={() => {
+                    // Keep coordinates but stop drawing mode
+                    onFinishDrawing?.(drawingCoordinates)
+                  }}>
+                    Finish Drawing ({drawingCoordinates.length} points)
                   </Button>
                 )}
                 <Button variant="outline" size="sm" onClick={handleCancelDrawing}>

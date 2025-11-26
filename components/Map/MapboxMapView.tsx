@@ -34,6 +34,7 @@ interface MapboxMapViewProps {
   onAlertClose?: (id: string) => void
   zones?: Zone[]
   isDrawingZone?: boolean
+  drawingCoordinates?: Array<{ lat: number; lng: number }>
   onZoneComplete?: (coordinates: Array<{ lat: number; lng: number }>) => void
 }
 
@@ -84,6 +85,7 @@ export default function MapboxMapView({
   onAlertClose,
   zones = [],
   isDrawingZone = false,
+  drawingCoordinates = [],
   onZoneComplete,
 }: MapboxMapViewProps) {
   const mapRef = useRef<MapRef>(null)
@@ -92,7 +94,14 @@ export default function MapboxMapView({
     latitude: 20.5937,
     zoom: 4,
   })
-  const [drawingPoints, setDrawingPoints] = useState<Array<{ lat: number; lng: number }>>([])
+  const [drawingPoints, setDrawingPoints] = useState<Array<{ lat: number; lng: number }>>(drawingCoordinates)
+
+  // Sync drawing points with prop
+  useEffect(() => {
+    if (isDrawingZone) {
+      setDrawingPoints(drawingCoordinates)
+    }
+  }, [drawingCoordinates, isDrawingZone])
 
   // Auto-fit bounds when route changes
   useEffect(() => {
@@ -191,9 +200,9 @@ export default function MapboxMapView({
     const newPoints = [...drawingPoints, { lat, lng }]
     setDrawingPoints(newPoints)
     
-    // If we have at least 3 points, allow completion
-    if (newPoints.length >= 3 && onZoneComplete) {
-      // Don't auto-complete, let user finish manually
+    // Notify parent of new point
+    if (onZoneComplete) {
+      onZoneComplete(newPoints)
     }
   }
 
@@ -201,8 +210,10 @@ export default function MapboxMapView({
   useEffect(() => {
     if (!isDrawingZone) {
       setDrawingPoints([])
+    } else {
+      setDrawingPoints(drawingCoordinates)
     }
-  }, [isDrawingZone])
+  }, [isDrawingZone, drawingCoordinates])
 
   return (
     <div className="w-full h-full relative">

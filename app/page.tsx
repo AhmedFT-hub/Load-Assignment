@@ -624,6 +624,7 @@ export default function Dashboard() {
           onAlertClose={(id) => setMapAlerts(prev => prev.filter(alert => alert.id !== id))}
           zones={zones}
           isDrawingZone={isDrawingZone}
+          drawingCoordinates={drawingCoordinates}
           onZoneComplete={(coords) => {
             setDrawingCoordinates(coords)
           }}
