@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getDirections, convertMapboxCoordinates } from '@/lib/directions'
 import { Zone } from '@/types'
+import { calculateDistance, calculateBearing, calculateDestination } from '@/lib/directions'
 
-// POST /api/directions/detour - Calculate route avoiding zones
+// POST /api/directions/detour - Calculate route avoiding zones using Mapbox with waypoints
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -15,155 +15,109 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // For now, use simple route calculation
-    // In production, you'd use Mapbox Directions API with avoidances
-    // For simplicity, we'll calculate a route that goes around the zone
-    
-    // Get basic route first
-    const directions = await getDirections({ origin, destination })
-    
-    // If no zones to avoid, return normal route
-    if (!avoidZones || avoidZones.length === 0) {
-      return NextResponse.json(directions)
+    const apiKey = process.env.MAPBOX_ACCESS_TOKEN
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'MAPBOX_ACCESS_TOKEN is not configured' },
+        { status: 500 }
+      )
     }
 
-    // For zones, we'll modify the route to avoid zone centers
-    // This is a simplified approach - in production you'd use Mapbox's avoidances parameter
-    const route = directions.routes[0]
-    const coordinates = route.geometry.coordinates
+    // If no zones to avoid, return normal route
+    if (!avoidZones || avoidZones.length === 0) {
+      const coordinates = `${origin.lng},${origin.lat};${destination.lng},${destination.lat}`
+      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?geometries=geojson&access_token=${apiKey}`
+      const response = await fetch(url)
+      const data = await response.json()
+      return NextResponse.json(data)
+    }
 
-    // Check if route passes through any zone
-    // If it does, calculate a waypoint that avoids the zone
-    const modifiedCoordinates = [...coordinates]
+    // Calculate waypoints that avoid the redzone
+    const waypoints: Array<{ lat: number; lng: number }> = []
     
     for (const zone of avoidZones as Zone[]) {
-      if (zone.coordinates && zone.coordinates.length > 0) {
-        const zoneCenter = zone.coordinates[0]
+      if (zone.coordinates && zone.coordinates.length >= 3) {
+        // Find zone center (average of all coordinates)
+        let centerLat = 0
+        let centerLng = 0
+        for (const coord of zone.coordinates) {
+          centerLat += coord.lat
+          centerLng += coord.lng
+        }
+        centerLat /= zone.coordinates.length
+        centerLng /= zone.coordinates.length
         
-        // Find if route is too close to zone center
-        for (let i = 0; i < modifiedCoordinates.length - 1; i++) {
-          const [lng1, lat1] = modifiedCoordinates[i]
-          const [lng2, lat2] = modifiedCoordinates[i + 1]
+        const zoneCenter = { lat: centerLat, lng: centerLng }
+        
+        // Calculate bearing from origin to destination
+        const bearingToDest = calculateBearing(origin, destination)
+        const bearingFromOrigin = calculateBearing(origin, zoneCenter)
+        
+        // Calculate distance from origin to zone center
+        const distToZone = calculateDistance(origin, zoneCenter)
+        
+        // If zone is between origin and destination, add waypoints to avoid it
+        if (distToZone < calculateDistance(origin, destination)) {
+          // Calculate two waypoints: one on each side of the zone
+          // Distance from zone center to waypoint (should be outside zone boundary)
+          const avoidDistance = 15 // 15km away from zone center to ensure we're outside
           
-          // Calculate distance from segment to zone center
-          const distToZone = calculateDistanceToSegment(
-            { lat: lat1, lng: lng1 },
-            { lat: lat2, lng: lng2 },
-            zoneCenter
-          )
+          // Calculate perpendicular bearings (90 degrees left and right)
+          const bearingLeft = (bearingToDest - 90 + 360) % 360
+          const bearingRight = (bearingToDest + 90) % 360
           
-          // If too close (within 2km), add waypoint to avoid
-          if (distToZone < 2) {
-            // Calculate waypoint that avoids zone (simplified - go around)
-            const bearing = calculateBearing(
-              { lat: lat1, lng: lng1 },
-              zoneCenter
-            )
-            const avoidPoint = calculateDestination(
-              zoneCenter,
-              bearing + 90, // 90 degrees offset
-              5 // 5km away
-            )
-            
-            modifiedCoordinates.splice(i + 1, 0, [avoidPoint.lng, avoidPoint.lat])
-            break
+          // Calculate waypoints on both sides
+          const waypointLeft = calculateDestination(zoneCenter, bearingLeft, avoidDistance)
+          const waypointRight = calculateDestination(zoneCenter, bearingRight, avoidDistance)
+          
+          // Choose the waypoint that's closer to the destination direction
+          const distLeft = calculateDistance(waypointLeft, destination)
+          const distRight = calculateDistance(waypointRight, destination)
+          
+          // Add the closer waypoint
+          if (distLeft < distRight) {
+            waypoints.push(waypointLeft)
+          } else {
+            waypoints.push(waypointRight)
           }
         }
       }
     }
 
-    // Recalculate route with waypoints if needed
-    // For now, return modified coordinates
-    return NextResponse.json({
-      routes: [{
-        ...route,
-        geometry: {
-          ...route.geometry,
-          coordinates: modifiedCoordinates,
-        },
-      }],
-    })
+    // Build Mapbox coordinates string with waypoints
+    let coordinates = `${origin.lng},${origin.lat}`
+    for (const waypoint of waypoints) {
+      coordinates += `;${waypoint.lng},${waypoint.lat}`
+    }
+    coordinates += `;${destination.lng},${destination.lat}`
+
+    // Call Mapbox Directions API with waypoints
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?geometries=geojson&access_token=${apiKey}`
+    
+    const response = await fetch(url)
+    
+    if (!response.ok) {
+      throw new Error(`Mapbox API failed: ${response.status} ${response.statusText}`)
+    }
+    
+    const data = await response.json()
+    
+    if (!data.routes || data.routes.length === 0) {
+      // Fallback: try without waypoints if route fails
+      const fallbackCoords = `${origin.lng},${origin.lat};${destination.lng},${destination.lat}`
+      const fallbackUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${fallbackCoords}?geometries=geojson&access_token=${apiKey}`
+      const fallbackResponse = await fetch(fallbackUrl)
+      const fallbackData = await fallbackResponse.json()
+      return NextResponse.json(fallbackData)
+    }
+
+    return NextResponse.json(data)
   } catch (error) {
     console.error('Error calculating detour route:', error)
     return NextResponse.json(
-      { error: 'Failed to calculate detour route' },
+      { error: 'Failed to calculate detour route', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
-}
-
-// Helper functions
-function calculateDistanceToSegment(
-  p1: { lat: number; lng: number },
-  p2: { lat: number; lng: number },
-  point: { lat: number; lng: number }
-): number {
-  const R = 6371 // Earth radius in km
-  const dLat1 = toRad(point.lat - p1.lat)
-  const dLng1 = toRad(point.lng - p1.lng)
-  const dLat2 = toRad(p2.lat - p1.lat)
-  const dLng2 = toRad(p2.lng - p1.lng)
-
-  const a1 = Math.sin(dLat1 / 2) * Math.sin(dLat1 / 2) +
-    Math.cos(toRad(p1.lat)) * Math.cos(toRad(point.lat)) *
-    Math.sin(dLng1 / 2) * Math.sin(dLng1 / 2)
-  const c1 = 2 * Math.atan2(Math.sqrt(a1), Math.sqrt(1 - a1))
-  const dist1 = R * c1
-
-  const a2 = Math.sin(dLat2 / 2) * Math.sin(dLat2 / 2) +
-    Math.cos(toRad(p1.lat)) * Math.cos(toRad(p2.lat)) *
-    Math.sin(dLng2 / 2) * Math.sin(dLng2 / 2)
-  const c2 = 2 * Math.atan2(Math.sqrt(a2), Math.sqrt(1 - a2))
-  const dist2 = R * c2
-
-  return Math.min(dist1, dist2)
-}
-
-function calculateBearing(
-  start: { lat: number; lng: number },
-  end: { lat: number; lng: number }
-): number {
-  const startLat = toRad(start.lat)
-  const startLng = toRad(start.lng)
-  const endLat = toRad(end.lat)
-  const endLng = toRad(end.lng)
-
-  const dLng = endLng - startLng
-  const y = Math.sin(dLng) * Math.cos(endLat)
-  const x = Math.cos(startLat) * Math.sin(endLat) -
-    Math.sin(startLat) * Math.cos(endLat) * Math.cos(dLng)
-
-  const bearing = Math.atan2(y, x)
-  return ((bearing * 180) / Math.PI + 360) % 360
-}
-
-function calculateDestination(
-  start: { lat: number; lng: number },
-  bearing: number,
-  distanceKm: number
-): { lat: number; lng: number } {
-  const R = 6371 // Earth radius in km
-  const lat1 = toRad(start.lat)
-  const lng1 = toRad(start.lng)
-  const brng = toRad(bearing)
-
-  const lat2 = Math.asin(
-    Math.sin(lat1) * Math.cos(distanceKm / R) +
-    Math.cos(lat1) * Math.sin(distanceKm / R) * Math.cos(brng)
-  )
-
-  const lng2 = lng1 + Math.atan2(
-    Math.sin(brng) * Math.sin(distanceKm / R) * Math.cos(lat1),
-    Math.cos(distanceKm / R) - Math.sin(lat1) * Math.sin(lat2)
-  )
-
-  return {
-    lat: (lat2 * 180) / Math.PI,
-    lng: (lng2 * 180) / Math.PI,
-  }
-}
-
-function toRad(degrees: number): number {
-  return degrees * (Math.PI / 180)
 }
 

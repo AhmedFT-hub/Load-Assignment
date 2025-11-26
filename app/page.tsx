@@ -482,6 +482,7 @@ export default function Dashboard() {
       setCompletedPath([]) // Reset completed path
       setIsOnDetour(true)
       setIsAtRisk(false) // Clear at risk state
+      setRedzoneAlertTriggered(null) // Clear alert trigger so it doesn't trigger again
       
       await addEvent({
         type: 'INFO',
@@ -496,9 +497,14 @@ export default function Dashboard() {
           : alert
       ))
       
+      // Clear redzone zone reference
+      setRedzoneZone(null)
+      
       // Resume simulation
       setIsSimulating(true)
       setJourneyStatus('IN_TRANSIT')
+      
+      console.log('Detour route set:', detour.length, 'points, total distance:', detourTotalDistance.toFixed(2), 'km')
     }
   }
 

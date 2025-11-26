@@ -131,6 +131,39 @@ export function calculateBearing(
 }
 
 /**
+ * Calculate a destination point given start point, bearing, and distance
+ * @param start - Starting coordinate
+ * @param bearing - Bearing in degrees (0-360)
+ * @param distanceKm - Distance in kilometers
+ * @returns Destination coordinate
+ */
+export function calculateDestination(
+  start: { lat: number; lng: number },
+  bearing: number,
+  distanceKm: number
+): { lat: number; lng: number } {
+  const R = 6371 // Earth radius in km
+  const lat1 = toRad(start.lat)
+  const lng1 = toRad(start.lng)
+  const brng = toRad(bearing)
+
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(distanceKm / R) +
+    Math.cos(lat1) * Math.sin(distanceKm / R) * Math.cos(brng)
+  )
+
+  const lng2 = lng1 + Math.atan2(
+    Math.sin(brng) * Math.sin(distanceKm / R) * Math.cos(lat1),
+    Math.cos(distanceKm / R) - Math.sin(lat1) * Math.sin(lat2)
+  )
+
+  return {
+    lat: (lat2 * 180) / Math.PI,
+    lng: (lng2 * 180) / Math.PI,
+  }
+}
+
+/**
  * Calculate minimum distance from a point to a polygon
  * @param point - Point to check
  * @param polygon - Array of polygon coordinates
