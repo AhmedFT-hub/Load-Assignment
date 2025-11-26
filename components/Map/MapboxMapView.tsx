@@ -36,6 +36,8 @@ interface MapboxMapViewProps {
   isDrawingZone?: boolean
   drawingCoordinates?: Array<{ lat: number; lng: number }>
   onZoneComplete?: (coordinates: Array<{ lat: number; lng: number }>) => void
+  detourRoute?: Array<{ lat: number; lng: number }> | null
+  isOnDetour?: boolean
 }
 
 // Helper function to create a circle (geofence) around a point
@@ -87,6 +89,8 @@ export default function MapboxMapView({
   isDrawingZone = false,
   drawingCoordinates = [],
   onZoneComplete,
+  detourRoute = null,
+  isOnDetour = false,
 }: MapboxMapViewProps) {
   const mapRef = useRef<MapRef>(null)
   const [viewState, setViewState] = useState({
@@ -161,6 +165,16 @@ export default function MapboxMapView({
     geometry: {
       type: 'LineString' as const,
       coordinates: nextLoadRoute.toDestination.map(p => [p.lng, p.lat]),
+    },
+  } : null
+
+  // Detour route GeoJSON (dotted green line)
+  const detourGeoJSON = detourRoute && detourRoute.length > 0 ? {
+    type: 'Feature' as const,
+    properties: {},
+    geometry: {
+      type: 'LineString' as const,
+      coordinates: detourRoute.map(p => [p.lng, p.lat]),
     },
   } : null
 
@@ -412,6 +426,33 @@ export default function MapboxMapView({
                 'line-dasharray': [2, 2],
               }}
             />
+          </Source>
+        )}
+
+        {/* Detour route (dotted green line) */}
+        {detourGeoJSON && (
+          <Source id="detour-route" type="geojson" data={detourGeoJSON}>
+            <Layer
+              id="detour-route-layer"
+              type="line"
+              paint={{
+                'line-color': isOnDetour ? '#10b981' : '#10b981',
+                'line-width': isOnDetour ? 5 : 4,
+                'line-opacity': isOnDetour ? 0.9 : 0.7,
+                'line-dasharray': [4, 4],
+              }}
+            />
+            {isOnDetour && (
+              <Layer
+                id="detour-route-fill"
+                type="line"
+                paint={{
+                  'line-color': '#10b981',
+                  'line-width': 8,
+                  'line-opacity': 0.2,
+                }}
+              />
+            )}
           </Source>
         )}
 

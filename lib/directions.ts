@@ -129,3 +129,67 @@ export function calculateBearing(
 
   return (degrees + 360) % 360
 }
+
+/**
+ * Calculate minimum distance from a point to a polygon
+ * @param point - Point to check
+ * @param polygon - Array of polygon coordinates
+ * @returns Minimum distance in kilometers
+ */
+export function distanceToPolygon(
+  point: { lat: number; lng: number },
+  polygon: Array<{ lat: number; lng: number }>
+): number {
+  if (polygon.length < 3) return Infinity
+
+  let minDistance = Infinity
+
+  // Check distance to each edge of the polygon
+  for (let i = 0; i < polygon.length; i++) {
+    const p1 = polygon[i]
+    const p2 = polygon[(i + 1) % polygon.length]
+
+    // Calculate distance from point to line segment
+    const dist = distanceToSegment(point, p1, p2)
+    minDistance = Math.min(minDistance, dist)
+  }
+
+  return minDistance
+}
+
+/**
+ * Calculate distance from a point to a line segment
+ */
+function distanceToSegment(
+  point: { lat: number; lng: number },
+  segStart: { lat: number; lng: number },
+  segEnd: { lat: number; lng: number }
+): number {
+  const A = point.lat - segStart.lat
+  const B = point.lng - segStart.lng
+  const C = segEnd.lat - segStart.lat
+  const D = segEnd.lng - segStart.lng
+
+  const dot = A * C + B * D
+  const lenSq = C * C + D * D
+  let param = -1
+
+  if (lenSq !== 0) param = dot / lenSq
+
+  let xx: number, yy: number
+
+  if (param < 0) {
+    xx = segStart.lat
+    yy = segStart.lng
+  } else if (param > 1) {
+    xx = segEnd.lat
+    yy = segEnd.lng
+  } else {
+    xx = segStart.lat + param * C
+    yy = segStart.lng + param * D
+  }
+
+  const dx = point.lat - xx
+  const dy = point.lng - yy
+  return calculateDistance(point, { lat: xx, lng: yy })
+}

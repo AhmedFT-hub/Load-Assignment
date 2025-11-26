@@ -89,59 +89,97 @@ export async function POST(request: NextRequest) {
       },
     })
     
+    // Check if this is a detour call (no loadId)
+    const rawPayload = callLog.rawRequestPayload as any
+    const isDetourCall = (!callLog.loadId || callLog.loadId === '') || 
+      (rawPayload && typeof rawPayload === 'object' && 'type' in rawPayload && rawPayload.type === 'detour')
+
     // Handle outcome
     if (mappedOutcome === 'ACCEPTED') {
-      // Update load status to ASSIGNED
-      await prisma.load.update({
-        where: { id: callLog.loadId },
-        data: { status: 'ASSIGNED' },
-      })
-      
-      // Assign load to journey
-      await prisma.journey.update({
-        where: { id: callLog.journeyId },
-        data: { assignedLoadId: callLog.loadId },
-      })
-      
-      // Log acceptance event
-      await prisma.simulationEvent.create({
-        data: {
-          journeyId: callLog.journeyId,
-          type: 'LOAD',
-          label: `Driver accepted load`,
-          details: {
-            loadId: callLog.loadId,
-            pickupCity: callLog.load.pickupCity,
-            dropCity: callLog.load.dropCity,
-            commodity: callLog.load.commodity,
-            rate: callLog.load.rate,
+      if (isDetourCall) {
+        // Detour call accepted - log event (frontend will handle route calculation)
+        const zoneId = rawPayload?.zoneId || ''
+        const zoneName = rawPayload?.zoneName || 'Unknown zone'
+        await prisma.simulationEvent.create({
+          data: {
+            journeyId: callLog.journeyId,
+            type: 'CALL',
+            label: `Driver accepted detour`,
+            details: {
+              zoneId,
+              zoneName,
+              outcome: mappedOutcome,
+            },
           },
-        },
-      })
+        })
+      } else {
+        // Load assignment call accepted
+        if (callLog.loadId) {
+          await prisma.load.update({
+            where: { id: callLog.loadId },
+            data: { status: 'ASSIGNED' },
+          })
+          
+          await prisma.journey.update({
+            where: { id: callLog.journeyId },
+            data: { assignedLoadId: callLog.loadId },
+          })
+          
+          await prisma.simulationEvent.create({
+            data: {
+              journeyId: callLog.journeyId,
+              type: 'LOAD',
+              label: `Driver accepted load`,
+              details: {
+                loadId: callLog.loadId,
+                pickupCity: callLog.load?.pickupCity,
+                dropCity: callLog.load?.dropCity,
+                commodity: callLog.load?.commodity,
+                rate: callLog.load?.rate,
+              },
+            },
+          })
+        }
+      }
     } else {
-      // For rejected/no answer/failed/busy, mark load as back to AVAILABLE
-      // or EXHAUSTED depending on your business logic
-      await prisma.load.update({
-        where: { id: callLog.loadId },
-        data: { status: 'AVAILABLE' }, // Make it available for next attempt
-      })
-      
-      // Log rejection event
-      await prisma.simulationEvent.create({
-        data: {
-          journeyId: callLog.journeyId,
-          type: 'CALL',
-          label: `Call ${mappedOutcome.toLowerCase().replace('_', ' ')} for load`,
-          details: {
-            loadId: callLog.loadId,
-            outcome: mappedOutcome,
+      // Rejected/no answer/failed/busy
+      if (isDetourCall) {
+        // Detour call rejected - log event
+        const zoneId = rawPayload?.zoneId || ''
+        const zoneName = rawPayload?.zoneName || 'Unknown zone'
+        await prisma.simulationEvent.create({
+          data: {
+            journeyId: callLog.journeyId,
+            type: 'CALL',
+            label: `Detour call ${mappedOutcome.toLowerCase().replace('_', ' ')}`,
+            details: {
+              zoneId,
+              zoneName,
+              outcome: mappedOutcome,
+            },
           },
-        },
-      })
-      
-      // Automatically trigger next call attempt
-      // We'll do this by signaling the frontend or having a separate background job
-      // For now, we just log it and let the frontend handle retry
+        })
+      } else {
+        // Load assignment call rejected
+        if (callLog.loadId) {
+          await prisma.load.update({
+            where: { id: callLog.loadId },
+            data: { status: 'AVAILABLE' },
+          })
+          
+          await prisma.simulationEvent.create({
+            data: {
+              journeyId: callLog.journeyId,
+              type: 'CALL',
+              label: `Call ${mappedOutcome.toLowerCase().replace('_', ' ')} for load`,
+              details: {
+                loadId: callLog.loadId,
+                outcome: mappedOutcome,
+              },
+            },
+          })
+        }
+      }
     }
     
     return NextResponse.json({ success: true, outcome: mappedOutcome })

@@ -10,7 +10,7 @@ import CallStatusCard from '@/components/calls/CallStatusCard'
 import EventTimeline from '@/components/events/EventTimeline'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { convertMapboxCoordinates, calculateDistance } from '@/lib/directions'
+import { convertMapboxCoordinates, calculateDistance, distanceToPolygon } from '@/lib/directions'
 import {
   generateStoppages,
   interpolatePosition,
@@ -72,6 +72,10 @@ export default function Dashboard() {
     show: boolean
   }>>([])
   const [zones, setZones] = useState<Zone[]>([])
+  const [redzoneAlertTriggered, setRedzoneAlertTriggered] = useState<string | null>(null) // Zone ID that triggered alert
+  const [detourRoute, setDetourRoute] = useState<Array<{ lat: number; lng: number }> | null>(null)
+  const [isOnDetour, setIsOnDetour] = useState(false)
+  const [detourCallStatus, setDetourCallStatus] = useState<'pending' | 'accepted' | 'rejected' | null>(null)
 
   const simulationInterval = useRef<NodeJS.Timeout | null>(null)
   const lastTickTime = useRef<number>(Date.now())
@@ -248,14 +252,25 @@ export default function Dashboard() {
       return
     }
 
+    // Calculate active route and total distance (use detour route if on detour)
+    const activeRoute = isOnDetour && detourRoute ? detourRoute : routePath
+    let activeTotalDistance = totalDistanceKm
+    if (isOnDetour && detourRoute && detourRoute.length > 1) {
+      // Recalculate total distance for detour route
+      activeTotalDistance = 0
+      for (let i = 1; i < detourRoute.length; i++) {
+        activeTotalDistance += calculateDistance(detourRoute[i - 1], detourRoute[i])
+      }
+    }
+
     // Update progress
-    const newProgress = updateProgress(progress, deltaSeconds, totalDistanceKm, speed, BASE_SPEED_KMH)
+    const newProgress = updateProgress(progress, deltaSeconds, activeTotalDistance, speed, BASE_SPEED_KMH)
     setProgress(newProgress)
 
     // Calculate position and heading
-    const position = interpolatePosition(routePath, newProgress)
+    const position = interpolatePosition(activeRoute, newProgress)
     const nextProgress = Math.min(newProgress + 0.001, 1)
-    const nextPosition = interpolatePosition(routePath, nextProgress)
+    const nextPosition = interpolatePosition(activeRoute, nextProgress)
     const heading = calculateHeading(position, nextPosition)
 
     setTruckPosition(position)
@@ -308,11 +323,59 @@ export default function Dashboard() {
     setIsInGeofence(inGeofence)
 
     // Calculate remaining distance and ETA
-    const remainingDist = calculateRemainingDistance(routePath, newProgress, totalDistanceKm)
+    const remainingDist = calculateRemainingDistance(activeRoute, newProgress, activeTotalDistance)
     const eta = calculateETA(remainingDist, BASE_SPEED_KMH, speed)
 
     setCurrentDistanceKm(remainingDist)
     setCurrentEtaMinutes(eta)
+
+    // Check for redzone proximity (10km before entering)
+    if (!redzoneAlertTriggered && !isOnDetour && zones.length > 0) {
+      const redzones = zones.filter(z => 
+        z.category === 'HIGH_RISK' || z.category === 'THEFT' || z.category === 'PILFERAGE'
+      )
+      
+      for (const zone of redzones) {
+        // Calculate distance to zone polygon
+        if (zone.coordinates && zone.coordinates.length >= 3) {
+          const distanceToZone = distanceToPolygon(position, zone.coordinates)
+          
+          // Check if within 10km of redzone boundary
+          if (distanceToZone <= 10 && distanceToZone > 0.5) {
+            setRedzoneAlertTriggered(zone.id)
+            
+            await addEvent({
+              type: 'WARNING',
+              label: `Approaching redzone: ${zone.name}`,
+              details: {
+                zoneId: zone.id,
+                zoneName: zone.name,
+                distanceToZone: distanceToZone.toFixed(2),
+                position,
+              },
+            })
+            
+            // Pause simulation
+            setIsSimulating(false)
+            setJourneyStatus('NEAR_DESTINATION')
+            
+            // Add map alert
+            setMapAlerts(prev => [...prev, {
+              id: `redzone-${zone.id}`,
+              position,
+              title: 'Redzone Alert',
+              message: `Approaching ${zone.name}. Detour call initiated.`,
+              type: 'warning',
+              show: true,
+            }])
+            
+            // Trigger detour call
+            triggerDetourCall(zone)
+            break
+          }
+        }
+      }
+    }
 
     // Update journey in backend
     await fetch(`/api/journeys/${selectedJourney.id}`, {
@@ -377,7 +440,75 @@ export default function Dashboard() {
     stoppageTimer,
     truckPosition,
     nearDestinationTriggered,
+    zones,
+    redzoneAlertTriggered,
+    isOnDetour,
   ])
+
+  // Calculate alternate route avoiding redzones
+  const calculateDetourRoute = async (zone: Zone) => {
+    if (!selectedJourney || !truckPosition) return null
+
+    try {
+      // For now, use a simple approach: calculate route avoiding zone center
+      // In production, you'd use Mapbox Directions API with avoidances parameter
+      const response = await fetch('/api/directions/detour', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          origin: truckPosition,
+          destination: { lat: selectedJourney.destinationLat, lng: selectedJourney.destinationLng },
+          avoidZones: [zone],
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        return convertMapboxCoordinates(data.routes[0].geometry.coordinates)
+      }
+    } catch (error) {
+      console.error('Error calculating detour route:', error)
+    }
+    return null
+  }
+
+  const triggerDetourCall = async (zone: Zone) => {
+    if (!selectedJourney || detourCallStatus === 'pending') return
+
+    setDetourCallStatus('pending')
+
+    try {
+      const response = await fetch(`/api/journeys/${selectedJourney.id}/trigger-detour-call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          zoneId: zone.id,
+          zoneName: zone.name,
+          currentPosition: truckPosition,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        await addEvent({
+          type: 'CALL',
+          label: `Detour call initiated for redzone: ${zone.name}`,
+          details: data,
+        })
+      } else {
+        await addEvent({
+          type: 'ERROR',
+          label: data.error || 'Failed to initiate detour call',
+          details: data,
+        })
+        setDetourCallStatus(null)
+      }
+    } catch (error) {
+      console.error('Error triggering detour call:', error)
+      setDetourCallStatus(null)
+    }
+  }
 
   const triggerCallForLoad = async () => {
     if (!selectedJourney || isWaitingForCall) return
@@ -464,6 +595,75 @@ export default function Dashboard() {
       console.error('Error fetching next load routes:', error)
     }
   }
+
+  // Poll for detour call status
+  useEffect(() => {
+    if (!selectedJourney || detourCallStatus !== 'pending') return
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/journeys/${selectedJourney.id}/detour-status`)
+        const data = await response.json()
+
+        if (data.status === 'accepted') {
+          setDetourCallStatus('accepted')
+          setIsOnDetour(true)
+          
+          // Calculate and set detour route
+          const zone = zones.find(z => z.id === redzoneAlertTriggered)
+          if (zone) {
+            const detour = await calculateDetourRoute(zone)
+            if (detour) {
+              // Calculate total distance for detour route
+              let detourTotalDistance = 0
+              for (let i = 1; i < detour.length; i++) {
+                detourTotalDistance += calculateDistance(detour[i - 1], detour[i])
+              }
+              
+              setDetourRoute(detour)
+              setRoutePath(detour) // Update route to detour
+              setTotalDistanceKm(detourTotalDistance) // Update total distance
+              setProgress(0) // Reset progress for new route
+              setCompletedPath([]) // Reset completed path
+              
+              await addEvent({
+                type: 'INFO',
+                label: `Detour accepted - Alternate route calculated`,
+                details: { zoneName: zone.name, detourDistance: detourTotalDistance.toFixed(2) },
+              })
+              
+              // Resume simulation
+              setIsSimulating(true)
+              setJourneyStatus('IN_TRANSIT')
+            }
+          }
+          
+          // Update map alert
+          setMapAlerts(prev => prev.map(alert => 
+            alert.id === `redzone-${redzoneAlertTriggered}`
+              ? { ...alert, title: 'Detour Accepted', message: 'Following alternate route', type: 'success' }
+              : alert
+          ))
+        } else if (data.status === 'rejected') {
+          setDetourCallStatus('rejected')
+          await addEvent({
+            type: 'WARNING',
+            label: `Detour rejected - Continuing original route`,
+            details: {},
+          })
+          
+          // Remove alert and resume simulation on original route
+          setMapAlerts(prev => prev.filter(alert => alert.id !== `redzone-${redzoneAlertTriggered}`))
+          setIsSimulating(true)
+          setJourneyStatus('IN_TRANSIT')
+        }
+      } catch (error) {
+        console.error('Error polling detour status:', error)
+      }
+    }, 2000) // Poll every 2 seconds
+
+    return () => clearInterval(pollInterval)
+  }, [selectedJourney, detourCallStatus, redzoneAlertTriggered, zones])
 
   // Poll for journey updates to check if load was accepted
   useEffect(() => {
@@ -619,6 +819,8 @@ export default function Dashboard() {
           alerts={mapAlerts}
           onAlertClose={(id) => setMapAlerts(prev => prev.filter(alert => alert.id !== id))}
           zones={zones}
+          detourRoute={detourRoute}
+          isOnDetour={isOnDetour}
         />
       </div>
 
