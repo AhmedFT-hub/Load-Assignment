@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Truck, MapPin, PackageSearch } from 'lucide-react'
+import { MapPin, PackageSearch, Truck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function Header() {
@@ -32,13 +32,6 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center px-4 md:px-8">
-        <div className="mr-8 flex items-center space-x-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Truck className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <span className="text-lg font-bold">Load Assignment</span>
-        </div>
-
         <nav className="flex items-center space-x-1 flex-1">
           {navigation.map((item) => {
             const isActive = pathname === item.href

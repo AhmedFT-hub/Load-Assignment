@@ -8,6 +8,7 @@ import SimulationControls from '@/components/simulation/SimulationControls'
 import JourneyInfoCard from '@/components/journeys/JourneyInfoCard'
 import CallStatusCard from '@/components/calls/CallStatusCard'
 import EventTimeline from '@/components/events/EventTimeline'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { convertMapboxCoordinates, calculateDistance } from '@/lib/directions'
 import {
   generateStoppages,
@@ -604,17 +605,19 @@ export default function Dashboard() {
       </div>
 
       {/* Sidebar */}
-      <div className="w-96 border-l bg-card overflow-hidden flex flex-col">
-        <div className="p-4 border-b">
+      <div className="w-[400px] border-l bg-background flex flex-col">
+        {/* Journey Selector */}
+        <div className="p-4 border-b bg-card/50">
           <JourneySelector
             onSelectJourney={loadJourney}
             selectedJourneyId={selectedJourney?.id}
           />
         </div>
 
+        {/* Scrollable Content */}
         {selectedJourney && (
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-4 space-y-4">
+          <ScrollArea className="flex-1">
+            <div className="p-4 space-y-3">
               <SimulationControls
                 isSimulating={isSimulating}
                 speed={speed}
@@ -641,7 +644,7 @@ export default function Dashboard() {
 
               <EventTimeline events={events} />
             </div>
-          </div>
+          </ScrollArea>
         )}
       </div>
     </div>
