@@ -71,7 +71,7 @@ export default function Dashboard() {
     message: string
     type: 'info' | 'success' | 'warning' | 'error'
     show: boolean
-    actions?: Array<{ label: string; action: string }>
+    actions?: Array<{ label: string; action: string; redirectUrl?: string }>
   }>>([])
   const [zones, setZones] = useState<Zone[]>([])
   const [redzoneAlertTriggered, setRedzoneAlertTriggered] = useState<string | null>(null) // Zone ID that triggered alert
@@ -81,6 +81,7 @@ export default function Dashboard() {
   const [isAtRisk, setIsAtRisk] = useState(false)
   const [redzoneZone, setRedzoneZone] = useState<Zone | null>(null)
   const [originalRoutePath, setOriginalRoutePath] = useState<Array<{ lat: number; lng: number }>>([])
+  const [epodCardShown, setEpodCardShown] = useState(false)
 
   const simulationInterval = useRef<NodeJS.Timeout | null>(null)
   const lastTickTime = useRef<number>(Date.now())
@@ -153,6 +154,7 @@ export default function Dashboard() {
       setCurrentEtaMinutes(calculateETA(distanceKm, BASE_SPEED_KMH, speed))
       setCurrentDistanceKm(distanceKm)
       setNearDestinationTriggered(false)
+      setEpodCardShown(false) // Reset ePOD card state for new journey
       
       // Add event
       await addEvent({
@@ -525,6 +527,33 @@ export default function Dashboard() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: 'COMPLETED' }),
           })
+          
+          // Show ePOD submission card
+          if (!epodCardShown && truckPosition) {
+            setEpodCardShown(true)
+            const epodValidationUrl = process.env.NEXT_PUBLIC_EPOD_VALIDATION_URL || 'https://epod.example.com/validate'
+            setMapAlerts(prev => [...prev, {
+              id: 'epod-submission',
+              position: truckPosition,
+              title: 'ePOD Submission Required',
+              message: 'Please submit the electronic Proof of Delivery (ePOD) for this delivery.',
+              type: 'info',
+              show: true,
+              actions: [
+                { 
+                  label: 'Validate', 
+                  action: 'validate_epod',
+                  redirectUrl: epodValidationUrl
+                },
+              ],
+            }])
+            
+            await addEvent({
+              type: 'INFO',
+              label: 'ePOD submission card displayed',
+              details: { position: selectedJourney.destinationCity },
+            })
+          }
         }
       }, UNLOADING_DURATION_SECONDS * 1000)
     }
@@ -1197,9 +1226,17 @@ export default function Dashboard() {
               handleDetourAction()
             } else if (action === 'continue') {
               handleContinueOnSameRoute()
-            } else if (action === 'accept-load') {
+            } else if (action === 'validate_epod') {
+              // Redirect is handled by MapPinCard component via redirectUrl
+              // Just log the event
+              addEvent({
+                type: 'INFO',
+                label: 'ePOD validation initiated',
+                details: { journeyId: selectedJourney?.id },
+              })
+            } else if (action === 'accept_load') {
               handleAcceptLoad()
-            } else if (action === 'reject-load') {
+            } else if (action === 'reject_load') {
               handleRejectLoad()
             }
           }}

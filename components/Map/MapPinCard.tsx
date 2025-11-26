@@ -11,7 +11,7 @@ interface MapPinCardProps {
   show: boolean
   autoClose?: number
   onClose?: () => void
-  actions?: Array<{ label: string; action: string }>
+  actions?: Array<{ label: string; action: string; redirectUrl?: string }>
   onAction?: (action: string) => void
 }
 
@@ -50,7 +50,7 @@ export default function MapPinCard({
       border: 'border-blue-700',
       cardBg: 'bg-white',
       text: 'text-gray-900',
-      icon: '📞'
+      icon: '📋' // Default info icon, can be overridden
     },
     success: {
       bg: 'bg-green-600',
@@ -97,12 +97,16 @@ export default function MapPinCard({
                     <button
                       key={idx}
                       onClick={() => {
+                        // If redirectUrl is provided, redirect to that URL
+                        if (action.redirectUrl) {
+                          window.open(action.redirectUrl, '_blank', 'noopener,noreferrer')
+                        }
                         onAction?.(action.action)
                         setIsVisible(false)
                         onClose?.()
                       }}
                       className={`text-xs font-semibold px-3 py-1.5 rounded transition-colors ${
-                        action.action === 'detour' || action.action === 'accept-load'
+                        action.action === 'detour' || action.action === 'accept_load' || action.action === 'validate_epod'
                           ? 'bg-green-600 hover:bg-green-700 text-white'
                           : action.action === 'continue'
                           ? 'bg-orange-600 hover:bg-orange-700 text-white'

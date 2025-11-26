@@ -30,7 +30,7 @@ interface MapboxMapViewProps {
     message: string
     type?: 'info' | 'success' | 'warning' | 'error'
     show: boolean
-    actions?: Array<{ label: string; action: string }>
+    actions?: Array<{ label: string; action: string; redirectUrl?: string }>
   }>
   onAlertClose?: (id: string) => void
   onAlertAction?: (id: string, action: string) => void
