@@ -8,6 +8,7 @@ import SimulationControls from '@/components/simulation/SimulationControls'
 import JourneyInfoCard from '@/components/journeys/JourneyInfoCard'
 import CallStatusCard from '@/components/calls/CallStatusCard'
 import EventTimeline from '@/components/events/EventTimeline'
+import AlertCard from '@/components/alerts/AlertCard'
 import { convertMapboxCoordinates, calculateDistance } from '@/lib/directions'
 import {
   generateStoppages,
@@ -57,6 +58,12 @@ export default function Dashboard() {
   const [nearDestinationTriggered, setNearDestinationTriggered] = useState(false)
   const [isInGeofence, setIsInGeofence] = useState(false)
   const [geofenceEntered, setGeofenceEntered] = useState(false)
+  const [showGeofenceAlert, setShowGeofenceAlert] = useState(false)
+  const [showCallInitiatedAlert, setShowCallInitiatedAlert] = useState(false)
+  const [nextLoadRoutes, setNextLoadRoutes] = useState<{
+    toPickup: Array<{ lat: number; lng: number }>
+    toDestination: Array<{ lat: number; lng: number }>
+  } | null>(null)
 
   const simulationInterval = useRef<NodeJS.Timeout | null>(null)
   const lastTickTime = useRef<number>(Date.now())
@@ -231,6 +238,7 @@ export default function Dashboard() {
 
     if (inGeofence && !geofenceEntered) {
       setGeofenceEntered(true)
+      setShowGeofenceAlert(true)
       await addEvent({
         type: 'INFO',
         label: `Truck entered 10km geofence of destination`,
@@ -331,6 +339,7 @@ export default function Dashboard() {
     if (!selectedJourney || isWaitingForCall) return
 
     setIsWaitingForCall(true)
+    setShowCallInitiatedAlert(true)
 
     try {
       const response = await fetch(`/api/journeys/${selectedJourney.id}/trigger-call`, {
@@ -359,6 +368,84 @@ export default function Dashboard() {
       setIsWaitingForCall(false)
     }
   }
+
+  // Fetch next load routes when load is accepted
+  const fetchNextLoadRoutes = async (load: any) => {
+    if (!selectedJourney) return
+
+    try {
+      // Route 1: Destination to pickup
+      const toPickupResponse = await fetch('/api/directions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          origin: { lat: selectedJourney.destinationLat, lng: selectedJourney.destinationLng },
+          destination: { lat: load.pickupLat, lng: load.pickupLng },
+        }),
+      })
+
+      // Route 2: Pickup to drop
+      const toDropResponse = await fetch('/api/directions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          origin: { lat: load.pickupLat, lng: load.pickupLng },
+          destination: { lat: load.dropLat, lng: load.dropLng },
+        }),
+      })
+
+      if (toPickupResponse.ok && toDropResponse.ok) {
+        const toPickupData = await toPickupResponse.json()
+        const toDropData = await toDropResponse.json()
+
+        const toPickupPath = convertMapboxCoordinates(toPickupData.routes[0].geometry.coordinates)
+        const toDropPath = convertMapboxCoordinates(toDropData.routes[0].geometry.coordinates)
+
+        setNextLoadRoutes({
+          toPickup: toPickupPath,
+          toDestination: toDropPath,
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching next load routes:', error)
+    }
+  }
+
+  // Poll for journey updates to check if load was accepted
+  useEffect(() => {
+    if (!selectedJourney || !isWaitingForCall) return
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/journeys/${selectedJourney.id}`)
+        const updatedJourney = await response.json()
+
+        if (updatedJourney.assignedLoadId && !selectedJourney.assignedLoadId) {
+          // Load was just accepted!
+          setSelectedJourney(updatedJourney)
+          setCallLogs(updatedJourney.callLogs || [])
+          
+          // Fetch next load routes
+          if (updatedJourney.assignedLoad) {
+            await fetchNextLoadRoutes(updatedJourney.assignedLoad)
+          }
+          
+          await addEvent({
+            type: 'LOAD',
+            label: 'Driver accepted next load - routes displayed',
+            details: {
+              loadId: updatedJourney.assignedLoadId,
+              load: updatedJourney.assignedLoad,
+            },
+          })
+        }
+      } catch (error) {
+        console.error('Error polling journey:', error)
+      }
+    }, 3000) // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval)
+  }, [selectedJourney, isWaitingForCall])
 
   // Simulation controls
   const handleStart = () => {
@@ -390,6 +477,9 @@ export default function Dashboard() {
     setNearDestinationTriggered(false)
     setIsInGeofence(false)
     setGeofenceEntered(false)
+    setShowGeofenceAlert(false)
+    setShowCallInitiatedAlert(false)
+    setNextLoadRoutes(null)
     
     if (selectedJourney) {
       setTruckPosition({ lat: selectedJourney.originLat, lng: selectedJourney.originLng })
@@ -459,6 +549,25 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen bg-gray-50">
+      {/* Alert Cards */}
+      <AlertCard
+        show={showGeofenceAlert}
+        title="Entering Destination Zone"
+        message="Truck has entered 10km geofence of destination. Preparing for load assignment..."
+        type="info"
+        autoClose={5000}
+        onClose={() => setShowGeofenceAlert(false)}
+      />
+      
+      <AlertCard
+        show={showCallInitiatedAlert}
+        title="Load Assignment Call Initiated"
+        message="Calling driver for next load assignment. Waiting for response..."
+        type="warning"
+        autoClose={8000}
+        onClose={() => setShowCallInitiatedAlert(false)}
+      />
+
       {/* Left Panel - Map */}
       <div className="w-3/5 h-full">
         <MapboxMapView
@@ -470,6 +579,9 @@ export default function Dashboard() {
           completedPath={completedPath}
           isStoppage={journeyStatus === 'STOPPAGE'}
           isInGeofence={isInGeofence}
+          nextLoadPickup={selectedJourney?.assignedLoad ? { lat: selectedJourney.assignedLoad.pickupLat, lng: selectedJourney.assignedLoad.pickupLng } : undefined}
+          nextLoadDrop={selectedJourney?.assignedLoad ? { lat: selectedJourney.assignedLoad.dropLat, lng: selectedJourney.assignedLoad.dropLng } : undefined}
+          nextLoadRoute={nextLoadRoutes || undefined}
         />
       </div>
 

@@ -15,6 +15,8 @@ interface MapboxMapViewProps {
   completedPath?: Array<{ lat: number; lng: number }>
   isStoppage?: boolean
   isInGeofence?: boolean
+  nextLoadPickup?: { lat: number; lng: number }
+  nextLoadDrop?: { lat: number; lng: number }
   nextLoadRoute?: {
     toPickup?: Array<{ lat: number; lng: number }>
     toDestination?: Array<{ lat: number; lng: number }>
@@ -61,6 +63,8 @@ export default function MapboxMapView({
   completedPath = [],
   isStoppage = false,
   isInGeofence = false,
+  nextLoadPickup,
+  nextLoadDrop,
   nextLoadRoute,
 }: MapboxMapViewProps) {
   const mapRef = useRef<MapRef>(null)
@@ -154,6 +158,30 @@ export default function MapboxMapView({
         {destination && (
           <Marker longitude={destination.lng} latitude={destination.lat}>
             <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-lg" />
+          </Marker>
+        )}
+
+        {/* Next load pickup marker */}
+        {nextLoadPickup && (
+          <Marker longitude={nextLoadPickup.lng} latitude={nextLoadPickup.lat}>
+            <div className="relative">
+              <div className="w-6 h-6 bg-green-500 rounded-full border-2 border-white shadow-lg animate-pulse" />
+              <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs px-2 py-0.5 rounded whitespace-nowrap">
+                Next Pickup
+              </div>
+            </div>
+          </Marker>
+        )}
+
+        {/* Next load drop marker */}
+        {nextLoadDrop && (
+          <Marker longitude={nextLoadDrop.lng} latitude={nextLoadDrop.lat}>
+            <div className="relative">
+              <div className="w-6 h-6 bg-orange-500 rounded-full border-2 border-white shadow-lg animate-pulse" />
+              <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded whitespace-nowrap">
+                Next Drop
+              </div>
+            </div>
           </Marker>
         )}
 
@@ -353,6 +381,18 @@ export default function MapboxMapView({
                 10km Geofence {isInGeofence && '(Inside)'}
               </span>
             </div>
+          )}
+          {(nextLoadRoute?.toPickup || nextLoadRoute?.toDestination) && (
+            <>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-0.5 border-t-2 border-dashed border-green-500"></div>
+                <span className="text-green-700">To Next Pickup</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-0.5 border-t-2 border-dashed border-orange-500"></div>
+                <span className="text-orange-700">To Next Drop</span>
+              </div>
+            </>
           )}
           {isStoppage && (
             <div className="flex items-center gap-2">
