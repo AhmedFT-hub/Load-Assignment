@@ -227,45 +227,50 @@ export default function MapboxMapView({
               <div
                 className={`${isStoppage ? 'animate-pulse' : ''}`}
                 style={{ 
-                  transform: `rotate(${truckHeading}deg)`,
+                  transform: `rotate(${truckHeading + 90}deg)`,
                   transformOrigin: 'center center',
-                  width: '32px',
-                  height: '32px',
+                  width: '36px',
+                  height: '36px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}
               >
                 <svg 
-                  width="32" 
-                  height="32" 
+                  width="36" 
+                  height="36" 
                   viewBox="0 0 24 24" 
                   fill="none" 
                   xmlns="http://www.w3.org/2000/svg"
-                  style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                  style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))' }}
                 >
-                  {/* Truck icon pointing upward (will rotate based on heading) */}
+                  {/* Truck icon pointing RIGHT (East), so it faces forward when moving */}
+                  {/* Front wheel */}
+                  <circle cx="18" cy="16" r="1.5" fill="#2563eb" stroke="#fff" strokeWidth="0.5"/>
+                  {/* Rear wheel */}
+                  <circle cx="8" cy="16" r="1.5" fill="#2563eb" stroke="#fff" strokeWidth="0.5"/>
+                  {/* Main truck body */}
                   <path 
-                    d="M18 18.5C18 19.3284 17.3284 20 16.5 20C15.6716 20 15 19.3284 15 18.5C15 17.6716 15.6716 17 16.5 17C17.3284 17 18 17.6716 18 18.5Z" 
+                    d="M3 8 L3 14 L6 14 L6 12.5 C6 11.6716 6.67157 11 7.5 11 L8.5 11 C9.32843 11 10 11.6716 10 12.5 L10 14 L14 14 L14 12.5 C14 11.6716 14.6716 11 15.5 11 L18.5 11 C19.3284 11 20 11.6716 20 12.5 L20 14 L21 14 L21 10 L18 7 L14 7 L14 8 L3 8 Z" 
                     fill="#2563eb"
                     stroke="#fff"
                     strokeWidth="0.5"
                   />
+                  {/* Cargo area */}
+                  <rect x="3" y="5" width="11" height="3" fill="#60a5fa" stroke="#fff" strokeWidth="0.5"/>
+                  {/* Truck cabin (front) */}
                   <path 
-                    d="M9 18.5C9 19.3284 8.32843 20 7.5 20C6.67157 20 6 19.3284 6 18.5C6 17.6716 6.67157 17 7.5 17C8.32843 17 9 17.6716 9 18.5Z" 
-                    fill="#2563eb"
+                    d="M14 7 L18 7 L21 10 L21 12 L14 12 L14 7 Z" 
+                    fill="#1e40af"
                     stroke="#fff"
                     strokeWidth="0.5"
                   />
+                  {/* Window */}
                   <path 
-                    d="M1 6V15H5.26C5.50883 14.4022 6.11524 14 6.82812 14H8.17188C8.88476 14 9.49117 14.4022 9.74 15H14.26C14.5088 14.4022 15.1152 14 15.8281 14H17.1719C17.8848 14 18.4912 14.4022 18.74 15H23V11L20 8H15V6H1Z" 
-                    fill="#2563eb"
+                    d="M15 8 L17 8 L19 10 L19 11 L15 11 L15 8 Z" 
+                    fill="#93c5fd"
                     stroke="#fff"
-                    strokeWidth="0.8"
-                  />
-                  <path 
-                    d="M15 8H19.5L21.5 10.5V11H15V8Z" 
-                    fill="#60a5fa"
+                    strokeWidth="0.3"
                   />
                 </svg>
               </div>
