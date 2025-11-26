@@ -585,7 +585,7 @@ export default function Dashboard() {
   }, [isSimulating, simulationTick])
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-background ml-3 mr-3 gap-2">
+    <div className="flex h-[calc(100vh-4rem)] bg-background ml-3 mr-3">
       {/* Map Area */}
       <div className="flex-1 relative">
         <MapboxMapView
@@ -608,21 +608,23 @@ export default function Dashboard() {
       {/* Sidebar */}
       <div className="w-[420px] border-l bg-background flex flex-col">
         <Tabs defaultValue="simulation" className="flex-1 flex flex-col">
-          <TabsList className="w-full justify-start rounded-none border-b bg-muted/50 p-0 h-12">
-            <TabsTrigger value="simulation" className="rounded-none data-[state=active]:bg-background flex-1">
-              Simulation
-            </TabsTrigger>
-            <TabsTrigger value="details" className="rounded-none data-[state=active]:bg-background flex-1">
-              Details
-            </TabsTrigger>
-            <TabsTrigger value="events" className="rounded-none data-[state=active]:bg-background flex-1">
-              Events
-            </TabsTrigger>
-          </TabsList>
+          <div className="px-3">
+            <TabsList className="w-full justify-start rounded-none border-b bg-muted/50 p-0 h-12">
+              <TabsTrigger value="simulation" className="rounded-none data-[state=active]:bg-background flex-1">
+                Simulation
+              </TabsTrigger>
+              <TabsTrigger value="details" className="rounded-none data-[state=active]:bg-background flex-1">
+                Details
+              </TabsTrigger>
+              <TabsTrigger value="events" className="rounded-none data-[state=active]:bg-background flex-1">
+                Events
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="simulation" className="flex-1 mt-0 flex flex-col overflow-hidden">
             {/* Journey Selector with its own scroll */}
-            <div className="flex-1 overflow-hidden px-4 pt-4">
+            <div className="flex-1 overflow-hidden px-3 pt-4">
               <JourneySelector
                 onSelectJourney={loadJourney}
                 selectedJourneyId={selectedJourney?.id}
@@ -631,7 +633,7 @@ export default function Dashboard() {
 
             {/* Simulation Controls - Fixed section */}
             {selectedJourney && (
-              <div className="border-t bg-card/30 p-4">
+              <div className="border-t bg-card/30 px-3 py-4">
                 <SimulationControls
                   isSimulating={isSimulating}
                   speed={speed}
@@ -651,7 +653,7 @@ export default function Dashboard() {
 
           <TabsContent value="details" className="flex-1 mt-0 overflow-hidden">
             <ScrollArea className="h-[calc(100vh-8rem)]">
-              <div className="p-4 space-y-4">
+              <div className="px-3 py-4 space-y-4">
                 {selectedJourney ? (
                   <>
                     <JourneyInfoCard
@@ -675,7 +677,7 @@ export default function Dashboard() {
 
           <TabsContent value="events" className="flex-1 mt-0 overflow-hidden">
             <ScrollArea className="h-[calc(100vh-8rem)]">
-              <div className="p-4">
+              <div className="px-3 py-4">
                 {selectedJourney ? (
                   <EventTimeline events={events} />
                 ) : (
