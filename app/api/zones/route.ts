@@ -30,10 +30,16 @@ export async function GET(request: NextRequest) {
     }))
 
     return NextResponse.json(zonesWithColors)
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching zones:', error)
+    
+    // If table doesn't exist yet, return empty array
+    if (error?.code === 'P2021' || error?.message?.includes('does not exist')) {
+      return NextResponse.json([])
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to fetch zones' },
+      { error: 'Failed to fetch zones', details: error?.message },
       { status: 500 }
     )
   }
@@ -62,10 +68,19 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(zone, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating zone:', error)
+    
+    // If table doesn't exist yet
+    if (error?.code === 'P2021' || error?.message?.includes('does not exist')) {
+      return NextResponse.json(
+        { error: 'Zones table not initialized. Please run database migration.' },
+        { status: 503 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to create zone' },
+      { error: 'Failed to create zone', details: error?.message },
       { status: 500 }
     )
   }

@@ -159,7 +159,7 @@ export default function MapboxMapView({
   const destinationGeofence = destination ? createGeoJSONCircle(destination, 10) : null
 
   // Convert zones to GeoJSON
-  const zonesGeoJSON = zones.map(zone => ({
+  const zonesGeoJSON = (zones || []).map(zone => ({
     type: 'Feature' as const,
     properties: {
       id: zone.id,
@@ -285,6 +285,7 @@ export default function MapboxMapView({
         {/* Zones */}
         {zonesGeoJSON.map((zoneGeoJSON, index) => {
           const zone = zones[index]
+          if (!zone) return null
           const color = zone.color || '#6366f1'
           return (
             <Source key={zone.id} id={`zone-${zone.id}`} type="geojson" data={zoneGeoJSON}>

@@ -37,10 +37,19 @@ export default function ZonesTab({
     try {
       setLoading(true)
       const response = await fetch('/api/zones')
+      if (!response.ok) {
+        // If 500 error, likely table doesn't exist - return empty array
+        if (response.status === 500) {
+          setZones([])
+          return
+        }
+        throw new Error(`Failed to fetch zones: ${response.status}`)
+      }
       const data = await response.json()
-      setZones(data)
+      setZones(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching zones:', error)
+      setZones([])
     } finally {
       setLoading(false)
     }
