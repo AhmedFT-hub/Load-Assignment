@@ -481,7 +481,8 @@ export default function Dashboard() {
       setRoutePath(detour) // Update route to detour
       setTotalDistanceKm(detourTotalDistance) // Update total distance
       setProgress(0) // Reset progress for new route
-      setCompletedPath([]) // Reset completed path
+      // DON'T reset completed path - preserve traveled path before detour
+      // The completed path will continue to grow as vehicle moves on detour
       setIsOnDetour(true)
       setIsAtRisk(false) // Clear at risk state
       setRedzoneAlertTriggered(null) // Clear alert trigger so it doesn't trigger again
@@ -723,7 +724,7 @@ export default function Dashboard() {
               setRoutePath(detour) // Update route to detour
               setTotalDistanceKm(detourTotalDistance) // Update total distance
               setProgress(0) // Reset progress for new route
-              setCompletedPath([]) // Reset completed path
+              // DON'T reset completed path - preserve traveled path before detour
               
               await addEvent({
                 type: 'INFO',
