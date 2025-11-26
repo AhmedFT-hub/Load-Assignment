@@ -354,7 +354,8 @@ export default function Dashboard() {
     setCurrentEtaMinutes(eta)
 
     // Check for redzone proximity (10km before entering)
-    if (!redzoneAlertTriggered && !isOnDetour && zones.length > 0) {
+    // Only trigger if alert hasn't been triggered, not on detour, and not already at risk
+    if (!redzoneAlertTriggered && !isOnDetour && !isAtRisk && zones.length > 0) {
       const redzones = zones.filter(z => 
         z.category === 'HIGH_RISK' || z.category === 'THEFT' || z.category === 'PILFERAGE'
       )
