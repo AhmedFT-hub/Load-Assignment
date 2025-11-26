@@ -72,12 +72,6 @@ export default function CallStatusCard({ callLogs, isWaitingForResponse }: CallS
                     <span>Time:</span>
                     <span>{format(new Date(latestCall.createdAt), 'HH:mm:ss')}</span>
                   </div>
-                  {latestCall.duration && (
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>Duration:</span>
-                      <span>{latestCall.duration}s</span>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>

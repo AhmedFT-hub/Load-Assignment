@@ -110,7 +110,7 @@ export default function SimulationControls({
             <span className="font-mono font-medium">{formatTime(simulationTime)}</span>
           </div>
 
-          {currentEtaMinutes !== null && (
+          {currentEtaMinutes != null && (
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center text-muted-foreground">
                 <Navigation className="h-4 w-4 mr-2" />
@@ -120,7 +120,7 @@ export default function SimulationControls({
             </div>
           )}
 
-          {currentDistanceKm !== null && (
+          {currentDistanceKm != null && (
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center text-muted-foreground">
                 <Gauge className="h-4 w-4 mr-2" />
