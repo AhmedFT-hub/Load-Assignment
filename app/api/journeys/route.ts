@@ -50,10 +50,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(journeys)
   } catch (error) {
     console.error('Error fetching journeys:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch journeys' },
-      { status: 500 }
-    )
+    // Return empty array instead of error object to prevent frontend errors
+    return NextResponse.json([])
   }
 }
 
