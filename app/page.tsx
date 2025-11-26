@@ -244,18 +244,6 @@ export default function Dashboard() {
     if (inGeofence && !geofenceEntered) {
       setGeofenceEntered(true)
       
-      // Add map pin alert at truck location
-      if (truckPosition) {
-        setMapAlerts(prev => [...prev, {
-          id: 'geofence-entered',
-          position: truckPosition,
-          title: 'Entering Destination Zone',
-          message: 'Truck has entered 10km geofence. Initiating load assignment call...',
-          type: 'info',
-          show: true,
-        }])
-      }
-      
       await addEvent({
         type: 'INFO',
         label: `Truck entered 10km geofence of destination`,
@@ -275,7 +263,7 @@ export default function Dashboard() {
         details: { distanceToDestination: distanceToDestination.toFixed(2) },
       })
       
-      // Trigger call for load assignment
+      // Trigger call for load assignment (will show map pin)
       triggerCallForLoad()
     }
     setIsInGeofence(inGeofence)
