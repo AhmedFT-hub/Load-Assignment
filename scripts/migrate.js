@@ -22,18 +22,23 @@ async function runMigrations() {
     // Try normal migration first
     try {
       console.log('Running Prisma migrations...');
-      execSync('npx prisma migrate deploy', { stdio: 'inherit', encoding: 'utf8' });
+      const output = execSync('npx prisma migrate deploy', { encoding: 'utf8', stdio: 'pipe' });
+      console.log(output);
       console.log('✓ Migrations completed successfully.');
       await prisma.$disconnect();
       return;
     } catch (migrateError) {
-      // execSync throws an error object, check both message and stderr
-      const errorOutput = (migrateError.stderr || migrateError.stdout || migrateError.message || migrateError.toString()).toString();
+      // execSync throws an error object, check stderr, stdout, and message
+      const stderr = migrateError.stderr?.toString() || '';
+      const stdout = migrateError.stdout?.toString() || '';
+      const errorOutput = stderr + stdout + (migrateError.message || '');
       
-      console.log('Migration error detected:', errorOutput.substring(0, 200));
+      console.log('Migration error detected. Checking for baseline issue...');
+      console.log('Error output:', errorOutput.substring(0, 300));
       
       // If migration fails due to baseline issue (P3005), run SQL directly
-      if (errorOutput.includes('P3005') || errorOutput.includes('not empty') || errorOutput.includes('schema is not empty')) {
+      // P3005 means database schema is not empty
+      if (errorOutput.includes('P3005') || errorOutput.includes('not empty') || errorOutput.includes('schema is not empty') || errorOutput.includes('baseline')) {
         console.log('Database has existing schema. Running migration SQL directly...');
         
         // Read and execute the migration SQL
