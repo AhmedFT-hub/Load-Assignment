@@ -106,7 +106,7 @@ export default function MapPinCard({
                         onClose?.()
                       }}
                       className={`text-xs font-semibold px-3 py-1.5 rounded transition-colors ${
-                        action.action === 'detour' || action.action === 'accept_load' || action.action === 'validate_epod'
+                        action.action === 'detour' || action.action === 'accept_load' || action.action === 'validate_epod' || action.action === 'view_planning_agent'
                           ? 'bg-green-600 hover:bg-green-700 text-white'
                           : action.action === 'continue'
                           ? 'bg-orange-600 hover:bg-orange-700 text-white'

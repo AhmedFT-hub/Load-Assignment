@@ -82,6 +82,7 @@ export default function Dashboard() {
   const [redzoneZone, setRedzoneZone] = useState<Zone | null>(null)
   const [originalRoutePath, setOriginalRoutePath] = useState<Array<{ lat: number; lng: number }>>([])
   const [epodCardShown, setEpodCardShown] = useState(false)
+  const [fragilityRiskCardShown, setFragilityRiskCardShown] = useState(false)
 
   const simulationInterval = useRef<NodeJS.Timeout | null>(null)
   const lastTickTime = useRef<number>(Date.now())
@@ -155,6 +156,7 @@ export default function Dashboard() {
       setCurrentDistanceKm(distanceKm)
       setNearDestinationTriggered(false)
       setEpodCardShown(false) // Reset ePOD card state for new journey
+      setFragilityRiskCardShown(false) // Reset fragility risk card state for new journey
       
       // Add event
       await addEvent({
@@ -1111,6 +1113,37 @@ export default function Dashboard() {
     setIsSimulating(true)
     if (journeyStatus === 'NOT_STARTED') {
       setJourneyStatus('IN_TRANSIT')
+      
+      // Show fragility risk card at origin when simulation starts
+      if (!fragilityRiskCardShown) {
+        setFragilityRiskCardShown(true)
+        const planningAgentUrl = process.env.NEXT_PUBLIC_PLANNING_AGENT_URL || 'https://planning-agent.example.com'
+        setMapAlerts(prev => [...prev, {
+          id: 'fragility-risk',
+          position: { lat: selectedJourney.originLat, lng: selectedJourney.originLng },
+          title: 'Fragility Risk Alert',
+          message: `Based on the current dispatch plan, the fragility risk is very high. See how our planning agent could have reduced it to 20%.`,
+          type: 'warning',
+          show: true,
+          actions: [
+            { 
+              label: 'View Planning Agent', 
+              action: 'view_planning_agent',
+              redirectUrl: planningAgentUrl
+            },
+          ],
+        }])
+        
+        addEvent({
+          type: 'INFO',
+          label: 'Fragility risk alert displayed',
+          details: { 
+            originCity: selectedJourney.originCity,
+            journeyId: selectedJourney.id,
+          },
+        })
+      }
+      
       addEvent({
         type: 'STATE_CHANGE',
         label: 'Journey started',
