@@ -1267,6 +1267,14 @@ export default function Dashboard() {
                 label: 'ePOD validation initiated',
                 details: { journeyId: selectedJourney?.id },
               })
+            } else if (action === 'view_planning_agent') {
+              // Redirect is handled by MapPinCard component via redirectUrl
+              // Just log the event
+              addEvent({
+                type: 'INFO',
+                label: 'Planning agent link clicked',
+                details: { journeyId: selectedJourney?.id },
+              })
             } else if (action === 'accept_load') {
               handleAcceptLoad()
             } else if (action === 'reject_load') {
