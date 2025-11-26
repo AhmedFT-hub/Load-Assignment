@@ -295,12 +295,15 @@ export default function Dashboard() {
     setTruckHeading(heading)
 
     // Update completed path with current position
+    // When at risk, ensure we're tracking every point on the path (don't skip)
     setCompletedPath(prev => {
       // Add current position if it's significantly different from last position
       const lastPos = prev[prev.length - 1]
+      // When at risk, use smaller threshold to capture more points and stay on path
+      const threshold = isAtRisk ? 0.0001 : 0.001
       if (!lastPos || 
-          Math.abs(lastPos.lat - position.lat) > 0.001 || 
-          Math.abs(lastPos.lng - position.lng) > 0.001) {
+          Math.abs(lastPos.lat - position.lat) > threshold || 
+          Math.abs(lastPos.lng - position.lng) > threshold) {
         return [...prev, position]
       }
       return prev
