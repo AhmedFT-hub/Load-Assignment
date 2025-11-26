@@ -681,7 +681,7 @@ export default function Dashboard() {
 
           <TabsContent value="details" className="flex-1 mt-0 overflow-hidden">
             <ScrollArea className="h-[calc(100vh-8rem)]">
-              <div className="px-3 py-4 space-y-4">
+              <div className="px-3 pb-4 pt-0 space-y-4">
                 {selectedJourney ? (
                   <>
                     <JourneyInfoCard
@@ -705,7 +705,7 @@ export default function Dashboard() {
 
           <TabsContent value="events" className="flex-1 mt-0 overflow-hidden">
             <ScrollArea className="h-[calc(100vh-8rem)]">
-              <div className="px-3 py-4">
+              <div className="px-3 pb-4 pt-0">
                 {selectedJourney ? (
                   <EventTimeline events={events} />
                 ) : (
