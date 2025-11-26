@@ -13,9 +13,41 @@ interface MapboxMapViewProps {
   truckHeading?: number
   routePath?: Array<{ lat: number; lng: number }>
   isStoppage?: boolean
+  isInGeofence?: boolean
   nextLoadRoute?: {
     toPickup?: Array<{ lat: number; lng: number }>
     toDestination?: Array<{ lat: number; lng: number }>
+  }
+}
+
+// Helper function to create a circle (geofence) around a point
+function createGeoJSONCircle(center: { lat: number; lng: number }, radiusInKm: number, points: number = 64) {
+  const coords = {
+    latitude: center.lat,
+    longitude: center.lng,
+  }
+
+  const km = radiusInKm
+  const ret = []
+  const distanceX = km / (111.32 * Math.cos((coords.latitude * Math.PI) / 180))
+  const distanceY = km / 110.574
+
+  for (let i = 0; i < points; i++) {
+    const theta = (i / points) * (2 * Math.PI)
+    const x = distanceX * Math.cos(theta)
+    const y = distanceY * Math.sin(theta)
+
+    ret.push([coords.longitude + x, coords.latitude + y])
+  }
+  ret.push(ret[0])
+
+  return {
+    type: 'Feature' as const,
+    geometry: {
+      type: 'Polygon' as const,
+      coordinates: [ret],
+    },
+    properties: {},
   }
 }
 
@@ -26,6 +58,7 @@ export default function MapboxMapView({
   truckHeading = 0,
   routePath = [],
   isStoppage = false,
+  isInGeofence = false,
   nextLoadRoute,
 }: MapboxMapViewProps) {
   const mapRef = useRef<MapRef>(null)
@@ -86,6 +119,9 @@ export default function MapboxMapView({
     },
   } : null
 
+  // 10km geofence around destination
+  const destinationGeofence = destination ? createGeoJSONCircle(destination, 10) : null
+
   return (
     <div className="w-full h-full relative">
       <Map
@@ -107,6 +143,30 @@ export default function MapboxMapView({
           <Marker longitude={destination.lng} latitude={destination.lat}>
             <div className="w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-lg" />
           </Marker>
+        )}
+
+        {/* 10km Geofence around destination */}
+        {destinationGeofence && (
+          <Source id="destination-geofence" type="geojson" data={destinationGeofence}>
+            <Layer
+              id="geofence-fill"
+              type="fill"
+              paint={{
+                'fill-color': isInGeofence ? '#f59e0b' : '#3b82f6',
+                'fill-opacity': isInGeofence ? 0.15 : 0.1,
+              }}
+            />
+            <Layer
+              id="geofence-outline"
+              type="line"
+              paint={{
+                'line-color': isInGeofence ? '#f59e0b' : '#3b82f6',
+                'line-width': 2,
+                'line-opacity': 0.5,
+                'line-dasharray': [2, 2],
+              }}
+            />
+          </Source>
         )}
 
         {/* Current route */}
@@ -193,6 +253,14 @@ export default function MapboxMapView({
             <div className="w-3 h-3 rounded-full bg-blue-600"></div>
             <span>Current Route</span>
           </div>
+          {destination && (
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full border-2 ${isInGeofence ? 'border-orange-500 bg-orange-100' : 'border-blue-600 bg-blue-100'}`}></div>
+              <span className={isInGeofence ? 'text-orange-600 font-semibold' : ''}>
+                10km Geofence {isInGeofence && '(Inside)'}
+              </span>
+            </div>
+          )}
           {isStoppage && (
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>

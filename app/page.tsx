@@ -8,7 +8,7 @@ import SimulationControls from '@/components/simulation/SimulationControls'
 import JourneyInfoCard from '@/components/journeys/JourneyInfoCard'
 import CallStatusCard from '@/components/calls/CallStatusCard'
 import EventTimeline from '@/components/events/EventTimeline'
-import { convertMapboxCoordinates } from '@/lib/directions'
+import { convertMapboxCoordinates, calculateDistance } from '@/lib/directions'
 import {
   generateStoppages,
   interpolatePosition,
@@ -19,6 +19,8 @@ import {
   updateProgress,
   Stoppage,
 } from '@/lib/simulation'
+
+const GEOFENCE_RADIUS_KM = 10
 
 // Dynamically import Mapbox Map to avoid SSR issues
 const MapboxMapView = dynamic(() => import('@/components/Map/MapboxMapView'), {
@@ -52,6 +54,8 @@ export default function Dashboard() {
   const [callLogs, setCallLogs] = useState<CallLog[]>([])
   const [isWaitingForCall, setIsWaitingForCall] = useState(false)
   const [nearDestinationTriggered, setNearDestinationTriggered] = useState(false)
+  const [isInGeofence, setIsInGeofence] = useState(false)
+  const [geofenceEntered, setGeofenceEntered] = useState(false)
 
   const simulationInterval = useRef<NodeJS.Timeout | null>(null)
   const lastTickTime = useRef<number>(Date.now())
@@ -204,6 +208,26 @@ export default function Dashboard() {
     setTruckPosition(position)
     setTruckHeading(heading)
 
+    // Check if truck is within 10km geofence of destination
+    const distanceToDestination = calculateDistance(
+      position,
+      { lat: selectedJourney.destinationLat, lng: selectedJourney.destinationLng }
+    )
+    const inGeofence = distanceToDestination <= GEOFENCE_RADIUS_KM
+
+    if (inGeofence && !geofenceEntered) {
+      setGeofenceEntered(true)
+      await addEvent({
+        type: 'INFO',
+        label: `Truck entered 10km geofence of destination`,
+        details: {
+          distanceToDestination: distanceToDestination.toFixed(2),
+          position,
+        },
+      })
+    }
+    setIsInGeofence(inGeofence)
+
     // Calculate remaining distance and ETA
     const remainingDist = calculateRemainingDistance(routePath, newProgress, totalDistanceKm)
     const eta = calculateETA(remainingDist, BASE_SPEED_KMH, speed)
@@ -350,6 +374,8 @@ export default function Dashboard() {
     setCurrentStoppage(null)
     setStoppageTimer(null)
     setNearDestinationTriggered(false)
+    setIsInGeofence(false)
+    setGeofenceEntered(false)
     
     if (selectedJourney) {
       setTruckPosition({ lat: selectedJourney.originLat, lng: selectedJourney.originLng })
@@ -427,6 +453,7 @@ export default function Dashboard() {
           truckHeading={truckHeading}
           routePath={routePath}
           isStoppage={journeyStatus === 'STOPPAGE'}
+          isInGeofence={isInGeofence}
         />
       </div>
 
