@@ -188,9 +188,9 @@ export default function MapboxMapView({
               id="route-layer"
               type="line"
               paint={{
-                'line-color': '#93c5fd',
+                'line-color': '#3b82f6',
                 'line-width': 4,
-                'line-opacity': 0.6,
+                'line-opacity': 0.85,
                 'line-dasharray': [2, 2],
               }}
             />
