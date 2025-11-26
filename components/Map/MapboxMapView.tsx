@@ -12,6 +12,7 @@ interface MapboxMapViewProps {
   truckPosition?: { lat: number; lng: number }
   truckHeading?: number
   routePath?: Array<{ lat: number; lng: number }>
+  completedPath?: Array<{ lat: number; lng: number }>
   isStoppage?: boolean
   isInGeofence?: boolean
   nextLoadRoute?: {
@@ -57,6 +58,7 @@ export default function MapboxMapView({
   truckPosition,
   truckHeading = 0,
   routePath = [],
+  completedPath = [],
   isStoppage = false,
   isInGeofence = false,
   nextLoadRoute,
@@ -89,13 +91,23 @@ export default function MapboxMapView({
     })
   }, [routePath])
 
-  // Convert route path to GeoJSON
+  // Convert route path to GeoJSON (full planned route - dotted)
   const routeGeoJSON = routePath.length > 0 ? {
     type: 'Feature' as const,
     properties: {},
     geometry: {
       type: 'LineString' as const,
       coordinates: routePath.map(p => [p.lng, p.lat]),
+    },
+  } : null
+
+  // Completed path GeoJSON (solid line showing progress)
+  const completedGeoJSON = completedPath.length > 1 ? {
+    type: 'Feature' as const,
+    properties: {},
+    geometry: {
+      type: 'LineString' as const,
+      coordinates: completedPath.map(p => [p.lng, p.lat]),
     },
   } : null
 
@@ -169,16 +181,32 @@ export default function MapboxMapView({
           </Source>
         )}
 
-        {/* Current route */}
+        {/* Planned route (dotted) - remaining path */}
         {routeGeoJSON && (
           <Source id="route" type="geojson" data={routeGeoJSON}>
             <Layer
               id="route-layer"
               type="line"
               paint={{
-                'line-color': '#2563eb',
+                'line-color': '#93c5fd',
                 'line-width': 4,
-                'line-opacity': 0.8,
+                'line-opacity': 0.6,
+                'line-dasharray': [2, 2],
+              }}
+            />
+          </Source>
+        )}
+
+        {/* Completed path (solid) - already traveled */}
+        {completedGeoJSON && (
+          <Source id="completed-route" type="geojson" data={completedGeoJSON}>
+            <Layer
+              id="completed-route-layer"
+              type="line"
+              paint={{
+                'line-color': '#2563eb',
+                'line-width': 5,
+                'line-opacity': 1,
               }}
             />
           </Source>
@@ -311,8 +339,12 @@ export default function MapboxMapView({
             <span>Destination</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-            <span>Current Route</span>
+            <div className="w-8 h-0.5 bg-blue-600"></div>
+            <span>Traveled Path</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-0.5 border-t-2 border-dashed border-blue-300"></div>
+            <span>Planned Route</span>
           </div>
           {destination && (
             <div className="flex items-center gap-2">

@@ -41,6 +41,7 @@ export default function Dashboard() {
   const [progress, setProgress] = useState(0)
   const [simulationTime, setSimulationTime] = useState(0)
   const [routePath, setRoutePath] = useState<Array<{ lat: number; lng: number }>>([])
+  const [completedPath, setCompletedPath] = useState<Array<{ lat: number; lng: number }>>([])
   const [totalDistanceKm, setTotalDistanceKm] = useState(0)
   const [truckPosition, setTruckPosition] = useState<{ lat: number; lng: number } | null>(null)
   const [truckHeading, setTruckHeading] = useState(0)
@@ -104,6 +105,7 @@ export default function Dashboard() {
       // Reset simulation state
       setProgress(0)
       setSimulationTime(0)
+      setCompletedPath([{ lat: fullJourney.originLat, lng: fullJourney.originLng }])
       setTruckPosition({ lat: fullJourney.originLat, lng: fullJourney.originLng })
       setCurrentEtaMinutes(calculateETA(distanceKm, BASE_SPEED_KMH, speed))
       setCurrentDistanceKm(distanceKm)
@@ -207,6 +209,18 @@ export default function Dashboard() {
 
     setTruckPosition(position)
     setTruckHeading(heading)
+
+    // Update completed path with current position
+    setCompletedPath(prev => {
+      // Add current position if it's significantly different from last position
+      const lastPos = prev[prev.length - 1]
+      if (!lastPos || 
+          Math.abs(lastPos.lat - position.lat) > 0.001 || 
+          Math.abs(lastPos.lng - position.lng) > 0.001) {
+        return [...prev, position]
+      }
+      return prev
+    })
 
     // Check if truck is within 10km geofence of destination
     const distanceToDestination = calculateDistance(
@@ -379,6 +393,7 @@ export default function Dashboard() {
     
     if (selectedJourney) {
       setTruckPosition({ lat: selectedJourney.originLat, lng: selectedJourney.originLng })
+      setCompletedPath([{ lat: selectedJourney.originLat, lng: selectedJourney.originLng }])
       setCurrentEtaMinutes(calculateETA(totalDistanceKm, BASE_SPEED_KMH, speed))
       setCurrentDistanceKm(totalDistanceKm)
       
@@ -452,6 +467,7 @@ export default function Dashboard() {
           truckPosition={truckPosition || undefined}
           truckHeading={truckHeading}
           routePath={routePath}
+          completedPath={completedPath}
           isStoppage={journeyStatus === 'STOPPAGE'}
           isInGeofence={isInGeofence}
         />
