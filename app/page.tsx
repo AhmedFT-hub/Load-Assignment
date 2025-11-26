@@ -79,6 +79,7 @@ export default function Dashboard() {
   const [detourCallStatus, setDetourCallStatus] = useState<'pending' | 'accepted' | 'rejected' | null>(null)
   const [isAtRisk, setIsAtRisk] = useState(false)
   const [redzoneZone, setRedzoneZone] = useState<Zone | null>(null)
+  const [originalRoutePath, setOriginalRoutePath] = useState<Array<{ lat: number; lng: number }>>([])
 
   const simulationInterval = useRef<NodeJS.Timeout | null>(null)
   const lastTickTime = useRef<number>(Date.now())
@@ -555,6 +556,7 @@ export default function Dashboard() {
           origin: truckPosition,
           destination: { lat: selectedJourney.destinationLat, lng: selectedJourney.destinationLng },
           avoidZones: [zone],
+          originalRoute: originalRoutePath.length > 0 ? originalRoutePath : routePath, // Pass original route
         }),
       })
 

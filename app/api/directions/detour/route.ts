@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Zone } from '@/types'
-import { calculateDistance, calculateBearing, calculateDestination } from '@/lib/directions'
+import { calculateDistance, calculateBearing, calculateDestination, distanceToPolygon } from '@/lib/directions'
 
-// POST /api/directions/detour - Calculate route avoiding zones using Mapbox with waypoints
+// POST /api/directions/detour - Calculate route avoiding zones and rejoining original route after redzone
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { origin, destination, avoidZones } = body
+    const { origin, destination, avoidZones, originalRoute } = body
 
     if (!origin || !destination) {
       return NextResponse.json(
@@ -32,49 +32,126 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(data)
     }
 
-    // Calculate waypoints that avoid the redzone
+    // Find entry and exit points on original route relative to redzone
+    let entryPoint: { lat: number; lng: number } | null = null
+    let exitPoint: { lat: number; lng: number } | null = null
     const waypoints: Array<{ lat: number; lng: number }> = []
     
-    for (const zone of avoidZones as Zone[]) {
-      if (zone.coordinates && zone.coordinates.length >= 3) {
-        // Find zone center (average of all coordinates)
-        let centerLat = 0
-        let centerLng = 0
-        for (const coord of zone.coordinates) {
-          centerLat += coord.lat
-          centerLng += coord.lng
-        }
-        centerLat /= zone.coordinates.length
-        centerLng /= zone.coordinates.length
-        
-        const zoneCenter = { lat: centerLat, lng: centerLng }
-        
-        // Calculate bearing from origin to destination
-        const bearingToDest = calculateBearing(origin, destination)
-        const bearingFromOrigin = calculateBearing(origin, zoneCenter)
-        
-        // Calculate distance from origin to zone center
-        const distToZone = calculateDistance(origin, zoneCenter)
-        
-        // If zone is between origin and destination, add waypoints to avoid it
-        if (distToZone < calculateDistance(origin, destination)) {
-          // Calculate two waypoints: one on each side of the zone
-          // Distance from zone center to waypoint (should be outside zone boundary)
-          const avoidDistance = 15 // 15km away from zone center to ensure we're outside
+    if (originalRoute && originalRoute.length > 0) {
+      for (const zone of avoidZones as Zone[]) {
+        if (zone.coordinates && zone.coordinates.length >= 3) {
+          // Find zone center
+          let centerLat = 0
+          let centerLng = 0
+          for (const coord of zone.coordinates) {
+            centerLat += coord.lat
+            centerLng += coord.lng
+          }
+          centerLat /= zone.coordinates.length
+          centerLng /= zone.coordinates.length
+          const zoneCenter = { lat: centerLat, lng: centerLng }
           
-          // Calculate perpendicular bearings (90 degrees left and right)
+          // Find where original route enters redzone (first point within 10km of zone)
+          let entryIndex = -1
+          let exitIndex = -1
+          
+          for (let i = 0; i < originalRoute.length; i++) {
+            const point = originalRoute[i]
+            const distToZone = distanceToPolygon(point, zone.coordinates)
+            
+            // Entry point: first point that gets close to redzone (within 10km)
+            if (entryIndex === -1 && distToZone <= 10) {
+              // Go back a bit to find a point before entering
+              entryIndex = Math.max(0, i - 5)
+              entryPoint = originalRoute[entryIndex]
+            }
+            
+            // Exit point: first point after entry that's far enough from redzone (more than 10km)
+            if (entryIndex !== -1 && exitIndex === -1 && distToZone > 15) {
+              exitIndex = i
+              exitPoint = originalRoute[exitIndex]
+              break
+            }
+          }
+          
+          // If we couldn't find exit point, use a point further along the route
+          if (entryIndex !== -1 && exitIndex === -1) {
+            exitIndex = Math.min(originalRoute.length - 1, entryIndex + Math.floor(originalRoute.length * 0.3))
+            exitPoint = originalRoute[exitIndex]
+          }
+          
+          // Calculate waypoints to go around the redzone
+          if (entryPoint && exitPoint) {
+            // Calculate bearing from entry to exit (direction of travel)
+            const routeBearing = calculateBearing(entryPoint, exitPoint)
+            
+            // Calculate waypoints on both sides of the zone
+            const avoidDistance = 20 // 20km away from zone center to ensure we're well outside
+            const bearingLeft = (routeBearing - 90 + 360) % 360
+            const bearingRight = (routeBearing + 90) % 360
+            
+            const waypointLeft = calculateDestination(zoneCenter, bearingLeft, avoidDistance)
+            const waypointRight = calculateDestination(zoneCenter, bearingRight, avoidDistance)
+            
+            // Choose the waypoint that's closer to the exit point
+            const distLeft = calculateDistance(waypointLeft, exitPoint)
+            const distRight = calculateDistance(waypointRight, exitPoint)
+            
+            // Add the closer waypoint
+            if (distLeft < distRight) {
+              waypoints.push(waypointLeft)
+            } else {
+              waypoints.push(waypointRight)
+            }
+            
+            // Add exit point as a waypoint to rejoin original route
+            waypoints.push(exitPoint)
+          } else {
+            // Fallback: use simple waypoint calculation
+            const bearingToDest = calculateBearing(origin, destination)
+            const avoidDistance = 20
+            const bearingLeft = (bearingToDest - 90 + 360) % 360
+            const bearingRight = (bearingToDest + 90) % 360
+            
+            const waypointLeft = calculateDestination(zoneCenter, bearingLeft, avoidDistance)
+            const waypointRight = calculateDestination(zoneCenter, bearingRight, avoidDistance)
+            
+            const distLeft = calculateDistance(waypointLeft, destination)
+            const distRight = calculateDistance(waypointRight, destination)
+            
+            if (distLeft < distRight) {
+              waypoints.push(waypointLeft)
+            } else {
+              waypoints.push(waypointRight)
+            }
+          }
+        }
+      }
+    } else {
+      // No original route provided, use simple waypoint calculation
+      for (const zone of avoidZones as Zone[]) {
+        if (zone.coordinates && zone.coordinates.length >= 3) {
+          let centerLat = 0
+          let centerLng = 0
+          for (const coord of zone.coordinates) {
+            centerLat += coord.lat
+            centerLng += coord.lng
+          }
+          centerLat /= zone.coordinates.length
+          centerLng /= zone.coordinates.length
+          const zoneCenter = { lat: centerLat, lng: centerLng }
+          
+          const bearingToDest = calculateBearing(origin, destination)
+          const avoidDistance = 20
           const bearingLeft = (bearingToDest - 90 + 360) % 360
           const bearingRight = (bearingToDest + 90) % 360
           
-          // Calculate waypoints on both sides
           const waypointLeft = calculateDestination(zoneCenter, bearingLeft, avoidDistance)
           const waypointRight = calculateDestination(zoneCenter, bearingRight, avoidDistance)
           
-          // Choose the waypoint that's closer to the destination direction
           const distLeft = calculateDistance(waypointLeft, destination)
           const distRight = calculateDistance(waypointRight, destination)
           
-          // Add the closer waypoint
           if (distLeft < distRight) {
             waypoints.push(waypointLeft)
           } else {
