@@ -50,9 +50,34 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, category, coordinates, description, color } = body
 
+    console.log('Creating zone with data:', { name, category, coordinatesLength: coordinates?.length, description, color })
+
     if (!name || !category || !coordinates || !Array.isArray(coordinates)) {
       return NextResponse.json(
         { error: 'Missing required fields: name, category, coordinates' },
+        { status: 400 }
+      )
+    }
+
+    if (coordinates.length < 3) {
+      return NextResponse.json(
+        { error: 'Zone must have at least 3 coordinates to form a polygon' },
+        { status: 400 }
+      )
+    }
+
+    // Validate coordinates format
+    const validCoordinates = coordinates.every(
+      (coord: any) => 
+        coord && 
+        typeof coord === 'object' && 
+        typeof coord.lat === 'number' && 
+        typeof coord.lng === 'number'
+    )
+
+    if (!validCoordinates) {
+      return NextResponse.json(
+        { error: 'Invalid coordinates format. Expected array of {lat, lng} objects' },
         { status: 400 }
       )
     }
@@ -67,20 +92,38 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    console.log('Zone created successfully:', zone.id)
     return NextResponse.json(zone, { status: 201 })
   } catch (error: any) {
     console.error('Error creating zone:', error)
+    console.error('Error details:', {
+      code: error?.code,
+      message: error?.message,
+      meta: error?.meta,
+    })
     
     // If table doesn't exist yet
     if (error?.code === 'P2021' || error?.message?.includes('does not exist')) {
       return NextResponse.json(
-        { error: 'Zones table not initialized. Please run database migration.' },
+        { error: 'Zones table not initialized. Please run database migration: npx prisma migrate deploy' },
         { status: 503 }
+      )
+    }
+
+    // Prisma validation errors
+    if (error?.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'A zone with this name already exists' },
+        { status: 409 }
       )
     }
     
     return NextResponse.json(
-      { error: 'Failed to create zone', details: error?.message },
+      { 
+        error: 'Failed to create zone', 
+        details: error?.message,
+        code: error?.code 
+      },
       { status: 500 }
     )
   }

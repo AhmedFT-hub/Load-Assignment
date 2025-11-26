@@ -59,14 +59,21 @@ export default function ZonesPage() {
         }),
       })
 
-      if (!response.ok) throw new Error('Failed to create zone')
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || errorData.details || 'Failed to create zone')
+      }
 
+      const createdZone = await response.json()
+      console.log('Zone created successfully:', createdZone)
+      
       await fetchZones()
       setDrawingCoordinates([])
       setIsDrawingZone(false)
     } catch (error) {
       console.error('Error creating zone:', error)
-      alert('Failed to create zone')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create zone'
+      alert(`Failed to create zone: ${errorMessage}`)
     }
   }
 
