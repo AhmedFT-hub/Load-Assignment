@@ -243,17 +243,19 @@ export default function Dashboard() {
 
     if (inGeofence && !geofenceEntered) {
       setGeofenceEntered(true)
+      
       // Add map pin alert at truck location
       if (truckPosition) {
         setMapAlerts(prev => [...prev, {
           id: 'geofence-entered',
           position: truckPosition,
           title: 'Entering Destination Zone',
-          message: 'Truck has entered 10km geofence. Preparing for load assignment...',
+          message: 'Truck has entered 10km geofence. Initiating load assignment call...',
           type: 'info',
           show: true,
         }])
       }
+      
       await addEvent({
         type: 'INFO',
         label: `Truck entered 10km geofence of destination`,
@@ -262,6 +264,19 @@ export default function Dashboard() {
           position,
         },
       })
+      
+      // Pause simulation and trigger call for load assignment
+      setIsSimulating(false)
+      setJourneyStatus('NEAR_DESTINATION')
+      
+      await addEvent({
+        type: 'STATE_CHANGE',
+        label: `Simulation paused - initiating load assignment call`,
+        details: { distanceToDestination: distanceToDestination.toFixed(2) },
+      })
+      
+      // Trigger call for load assignment
+      triggerCallForLoad()
     }
     setIsInGeofence(inGeofence)
 
@@ -283,20 +298,7 @@ export default function Dashboard() {
       }),
     })
 
-    // Check for near destination trigger
-    if (eta < NEAR_DESTINATION_THRESHOLD_MINUTES && !nearDestinationTriggered && journeyStatus === 'IN_TRANSIT') {
-      setNearDestinationTriggered(true)
-      setJourneyStatus('NEAR_DESTINATION')
-      
-      await addEvent({
-        type: 'STATE_CHANGE',
-        label: `ETA now ${eta.toFixed(1)} min - near destination threshold triggered`,
-        details: { etaMinutes: eta, position },
-      })
-
-      // Trigger call for load assignment
-      triggerCallForLoad()
-    }
+    // Note: Call trigger moved to geofence entry for better control
 
     // Check for arrival at destination
     if (newProgress >= 1) {

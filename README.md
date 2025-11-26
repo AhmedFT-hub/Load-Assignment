@@ -4,9 +4,9 @@ A production-grade POC application demonstrating an intelligent load assignment 
 
 ## 🎯 Features
 
-- **Real-time Journey Simulation**: Animated truck movement along actual Google Maps routes with heading rotation
-- **Intelligent Load Assignment**: Automatically finds and assigns the nearest available load when ETA < 30 minutes
-- **Automated Calling**: Real calls via Ringg.ai API when approaching destination
+- **Real-time Journey Simulation**: Animated truck movement along actual Mapbox routes with heading rotation and 10km geofence visualization
+- **Intelligent Load Assignment**: Automatically finds and assigns the nearest available load when entering 10km geofence
+- **Automated Calling**: Real calls via Ringg.ai API when truck enters destination geofence (simulation pauses)
 - **Webhook Integration**: Handles call outcomes (Accepted/Rejected/No Answer/Busy) with automatic retry logic
 - **Smart Stoppage Simulation**: Random traffic stoppages with visual indicators
 - **Rich Event Timeline**: Expandable events showing detailed payloads and coordinates
@@ -224,16 +224,18 @@ DATABASE_URL="postgresql://localhost:5432/load_assignment?schema=public"
 
 ### Simulation Flow
 
-1. **Journey Starts**: Truck begins moving along route
+1. **Journey Starts**: Truck begins moving along route with visual progress indicator
 2. **Stoppages**: 1-2 random traffic stops occur (10-20 seconds each)
-3. **Near Destination** (ETA < 30 min): 
+3. **Geofence Entry** (10km radius): 
+   - Blue info pin appears on map at truck location
+   - **Simulation automatically pauses**
    - System finds nearest available load
-   - Initiates Ringg.ai call to driver
+   - Initiates Ringg.ai call to driver with orange warning pin
 4. **Webhook Response**:
-   - **Accepted**: Load assigned, continues to next load after delivery
+   - **Accepted**: Load assigned, shows dotted route to next pickup/drop, resume simulation
    - **Rejected/No Answer/Busy**: Automatically tries next nearest load
 5. **Arrival**: 5-second unloading visualization
-6. **Next Load** (if assigned): Routes to pickup → drop location
+6. **Next Load** (if assigned): Routes to pickup → drop location with visual arc
 
 ## 🎨 Customization
 
@@ -242,9 +244,9 @@ DATABASE_URL="postgresql://localhost:5432/load_assignment?schema=public"
 Edit in `app/page.tsx`:
 
 ```typescript
-const BASE_SPEED_KMH = 60                    // Base vehicle speed
-const SIMULATION_TICK_MS = 1000              // Update interval
-const NEAR_DESTINATION_THRESHOLD_MINUTES = 30 // Call trigger threshold
+const BASE_SPEED_KMH = 120                   // Base vehicle speed (faster simulation)
+const SIMULATION_TICK_MS = 500               // Update interval (smoother updates)
+const GEOFENCE_RADIUS_KM = 10                // Geofence radius for call trigger
 const UNLOADING_DURATION_SECONDS = 5         // Unloading time
 ```
 
