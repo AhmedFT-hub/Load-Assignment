@@ -1,12 +1,12 @@
 'use client'
 
-import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { MapPin, PackageSearch, Truck, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function Header() {
   const pathname = usePathname()
-  const router = useRouter()
 
   const navigation = [
     {
@@ -35,34 +35,32 @@ export default function Header() {
     },
   ]
 
-  const handleNavigation = (href: string) => {
-    router.push(href)
-  }
-
   return (
-    <header className="sticky top-0 z-[100] w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60" style={{ position: 'relative', pointerEvents: 'auto' }}>
-      <div className="container flex h-16 items-center justify-center px-4 md:px-8">
-        <nav className="flex items-center space-x-1" style={{ pointerEvents: 'auto', position: 'relative', zIndex: 100 }}>
+    <header 
+      className="sticky top-0 z-[100] w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+      style={{ position: 'sticky', zIndex: 100 }}
+    >
+      <div className="container flex h-16 items-center justify-center px-4 md:px-8" style={{ position: 'relative', zIndex: 101 }}>
+        <nav className="flex items-center space-x-1" style={{ position: 'relative', zIndex: 102 }}>
           {navigation.map((item) => {
             const isActive = pathname === item.href
             const Icon = item.icon
             
             return (
-              <button
+              <Link
                 key={item.href}
-                type="button"
-                onClick={() => handleNavigation(item.href)}
+                href={item.href}
                 className={cn(
-                  "group inline-flex h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 cursor-pointer relative",
+                  "group inline-flex h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
                   isActive
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground"
                 )}
-                style={{ pointerEvents: 'auto', zIndex: 101 }}
+                style={{ position: 'relative', zIndex: 103 }}
               >
                 <Icon className="mr-2 h-4 w-4" />
                 {item.name}
-              </button>
+              </Link>
             )
           })}
         </nav>
