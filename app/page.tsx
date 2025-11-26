@@ -585,7 +585,7 @@ export default function Dashboard() {
   }, [isSimulating, simulationTick])
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-background">
+    <div className="flex h-[calc(100vh-4rem)] bg-background ml-3 mr-3 gap-2">
       {/* Map Area */}
       <div className="flex-1 relative">
         <MapboxMapView
