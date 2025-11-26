@@ -227,50 +227,63 @@ export default function MapboxMapView({
               <div
                 className={`${isStoppage ? 'animate-pulse' : ''}`}
                 style={{ 
-                  transform: `rotate(${truckHeading + 90}deg)`,
+                  transform: `rotate(${truckHeading}deg)`,
                   transformOrigin: 'center center',
-                  width: '36px',
-                  height: '36px',
+                  width: '40px',
+                  height: '40px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}
               >
                 <svg 
-                  width="36" 
-                  height="36" 
-                  viewBox="0 0 24 24" 
+                  width="40" 
+                  height="40" 
+                  viewBox="0 0 40 60" 
                   fill="none" 
                   xmlns="http://www.w3.org/2000/svg"
-                  style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))' }}
+                  style={{ filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.5))' }}
                 >
-                  {/* Truck icon pointing RIGHT (East), so it faces forward when moving */}
-                  {/* Front wheel */}
-                  <circle cx="18" cy="16" r="1.5" fill="#2563eb" stroke="#fff" strokeWidth="0.5"/>
-                  {/* Rear wheel */}
-                  <circle cx="8" cy="16" r="1.5" fill="#2563eb" stroke="#fff" strokeWidth="0.5"/>
-                  {/* Main truck body */}
-                  <path 
-                    d="M3 8 L3 14 L6 14 L6 12.5 C6 11.6716 6.67157 11 7.5 11 L8.5 11 C9.32843 11 10 11.6716 10 12.5 L10 14 L14 14 L14 12.5 C14 11.6716 14.6716 11 15.5 11 L18.5 11 C19.3284 11 20 11.6716 20 12.5 L20 14 L21 14 L21 10 L18 7 L14 7 L14 8 L3 8 Z" 
-                    fill="#2563eb"
-                    stroke="#fff"
-                    strokeWidth="0.5"
-                  />
-                  {/* Cargo area */}
-                  <rect x="3" y="5" width="11" height="3" fill="#60a5fa" stroke="#fff" strokeWidth="0.5"/>
+                  {/* TOP VIEW TRUCK - Front points UP (North at 0°) */}
+                  
+                  {/* Cargo/trailer area (back) */}
+                  <rect x="8" y="20" width="24" height="35" rx="2" fill="#60a5fa" stroke="#1e40af" strokeWidth="1.5"/>
+                  
+                  {/* Cargo details/lines */}
+                  <line x1="12" y1="25" x2="28" y2="25" stroke="#1e40af" strokeWidth="0.8" opacity="0.5"/>
+                  <line x1="12" y1="35" x2="28" y2="35" stroke="#1e40af" strokeWidth="0.8" opacity="0.5"/>
+                  <line x1="12" y1="45" x2="28" y2="45" stroke="#1e40af" strokeWidth="0.8" opacity="0.5"/>
+                  
                   {/* Truck cabin (front) */}
                   <path 
-                    d="M14 7 L18 7 L21 10 L21 12 L14 12 L14 7 Z" 
-                    fill="#1e40af"
-                    stroke="#fff"
-                    strokeWidth="0.5"
+                    d="M 10 20 L 8 15 Q 8 8 12 5 L 28 5 Q 32 8 32 15 L 30 20 Z" 
+                    fill="#2563eb" 
+                    stroke="#1e40af" 
+                    strokeWidth="1.5"
                   />
-                  {/* Window */}
+                  
+                  {/* Windshield */}
+                  <ellipse cx="20" cy="12" rx="8" ry="5" fill="#93c5fd" opacity="0.8"/>
+                  <line x1="20" y1="7" x2="20" y2="17" stroke="#1e40af" strokeWidth="0.8" opacity="0.3"/>
+                  
+                  {/* Side mirrors */}
+                  <rect x="4" y="14" width="3" height="4" rx="1" fill="#1e40af" stroke="#fff" strokeWidth="0.5"/>
+                  <rect x="33" y="14" width="3" height="4" rx="1" fill="#1e40af" stroke="#fff" strokeWidth="0.5"/>
+                  
+                  {/* Front wheels */}
+                  <rect x="6" y="16" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
+                  <rect x="31" y="16" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
+                  
+                  {/* Rear wheels */}
+                  <rect x="6" y="48" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
+                  <rect x="31" y="48" width="3" height="6" rx="1.5" fill="#1f2937" stroke="#fff" strokeWidth="0.8"/>
+                  
+                  {/* Direction indicator - arrow on top of cabin */}
                   <path 
-                    d="M15 8 L17 8 L19 10 L19 11 L15 11 L15 8 Z" 
-                    fill="#93c5fd"
-                    stroke="#fff"
-                    strokeWidth="0.3"
+                    d="M 20 2 L 23 6 L 21 6 L 21 8 L 19 8 L 19 6 L 17 6 Z" 
+                    fill="#fbbf24" 
+                    stroke="#fff" 
+                    strokeWidth="0.5"
                   />
                 </svg>
               </div>
