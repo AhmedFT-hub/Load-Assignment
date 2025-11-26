@@ -1,6 +1,11 @@
 'use client'
 
 import { JourneyStatus } from '@/types'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { Play, Pause, RotateCcw, FastForward, Gauge, Clock, Navigation } from 'lucide-react'
 
 interface SimulationControlsProps {
   isSimulating: boolean
@@ -38,116 +43,118 @@ export default function SimulationControls({
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  const getStatusBadgeColor = (status: JourneyStatus) => {
+  const getStatusVariant = (status: JourneyStatus): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
-      case 'NOT_STARTED':
-        return 'bg-gray-100 text-gray-800'
       case 'IN_TRANSIT':
-        return 'bg-blue-100 text-blue-800'
+        return 'default'
       case 'NEAR_DESTINATION':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'UNLOADING':
-        return 'bg-purple-100 text-purple-800'
-      case 'COMPLETED':
-        return 'bg-green-100 text-green-800'
+        return 'secondary'
       case 'STOPPAGE':
-        return 'bg-red-100 text-red-800'
+        return 'destructive'
+      case 'COMPLETED':
+        return 'outline'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'secondary'
     }
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4">
-      <h3 className="text-lg font-semibold mb-4 text-gray-800">Simulation Controls</h3>
-      
-      {/* Action buttons */}
-      <div className="flex gap-2 mb-4">
-        {!isSimulating ? (
-          <button
-            onClick={onStart}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-          >
-            {journeyStatus === 'NOT_STARTED' ? 'Start Simulation' : 'Resume'}
-          </button>
-        ) : (
-          <button
-            onClick={onPause}
-            className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-          >
-            Pause
-          </button>
-        )}
-        
-        <button
-          onClick={onReset}
-          className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-        >
-          Reset
-        </button>
-      </div>
-
-      <button
-        onClick={onJumpNearDestination}
-        disabled={journeyStatus === 'COMPLETED' || journeyStatus === 'NEAR_DESTINATION'}
-        className="w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed mb-4"
-      >
-        Jump Near Destination
-      </button>
-
-      {/* Speed control */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Speed: {speed}x
-        </label>
-        <select
-          value={speed}
-          onChange={(e) => onSpeedChange(Number(e.target.value))}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {SPEED_OPTIONS.map(s => (
-            <option key={s} value={s}>{s}x</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Status display */}
-      <div className="space-y-3 border-t pt-4">
-        <div>
-          <span className="text-sm text-gray-600">Simulation Time:</span>
-          <div className="text-xl font-mono font-semibold text-gray-900">
-            {formatTime(simulationTime)}
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base">Controls</CardTitle>
+            <CardDescription>Manage simulation</CardDescription>
           </div>
+          <Badge variant={getStatusVariant(journeyStatus)}>
+            {journeyStatus.replace('_', ' ')}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Action Buttons */}
+        <div className="grid grid-cols-2 gap-2">
+          {!isSimulating ? (
+            <Button onClick={onStart} className="w-full">
+              <Play className="h-4 w-4 mr-2" />
+              {journeyStatus === 'NOT_STARTED' ? 'Start' : 'Resume'}
+            </Button>
+          ) : (
+            <Button onClick={onPause} variant="secondary" className="w-full">
+              <Pause className="h-4 w-4 mr-2" />
+              Pause
+            </Button>
+          )}
+          <Button onClick={onReset} variant="outline" className="w-full">
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Reset
+          </Button>
         </div>
 
-        <div>
-          <span className="text-sm text-gray-600">Journey Status:</span>
-          <div className="mt-1">
-            <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeColor(journeyStatus)}`}>
-              {journeyStatus.replace('_', ' ')}
-            </span>
+        {journeyStatus !== 'COMPLETED' && journeyStatus !== 'NEAR_DESTINATION' && (
+          <Button onClick={onJumpNearDestination} variant="outline" className="w-full" size="sm">
+            <FastForward className="h-4 w-4 mr-2" />
+            Jump to Geofence
+          </Button>
+        )}
+
+        <Separator />
+
+        {/* Stats */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center text-muted-foreground">
+              <Clock className="h-4 w-4 mr-2" />
+              Sim Time
+            </div>
+            <span className="font-mono font-medium">{formatTime(simulationTime)}</span>
           </div>
+
+          {currentEtaMinutes !== null && (
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center text-muted-foreground">
+                <Navigation className="h-4 w-4 mr-2" />
+                ETA
+              </div>
+              <span className="font-medium">{currentEtaMinutes.toFixed(1)} min</span>
+            </div>
+          )}
+
+          {currentDistanceKm !== null && (
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center text-muted-foreground">
+                <Gauge className="h-4 w-4 mr-2" />
+                Distance
+              </div>
+              <span className="font-medium">{currentDistanceKm.toFixed(1)} km</span>
+            </div>
+          )}
         </div>
 
-        {currentEtaMinutes !== null && currentEtaMinutes !== undefined && (
-          <div>
-            <span className="text-sm text-gray-600">Current ETA:</span>
-            <div className="text-lg font-semibold text-gray-900">
-              {currentEtaMinutes.toFixed(1)} min
-            </div>
-          </div>
-        )}
+        <Separator />
 
-        {currentDistanceKm !== null && currentDistanceKm !== undefined && (
-          <div>
-            <span className="text-sm text-gray-600">Remaining Distance:</span>
-            <div className="text-lg font-semibold text-gray-900">
-              {currentDistanceKm.toFixed(1)} km
-            </div>
+        {/* Speed Control */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Speed</span>
+            <Badge variant="outline">{speed}x</Badge>
           </div>
-        )}
-      </div>
-    </div>
+          <div className="grid grid-cols-7 gap-1">
+            {SPEED_OPTIONS.map((option) => (
+              <Button
+                key={option}
+                variant={speed === option ? "default" : "outline"}
+                size="sm"
+                className="h-8 text-xs px-0"
+                onClick={() => onSpeedChange(option)}
+              >
+                {option}x
+              </Button>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

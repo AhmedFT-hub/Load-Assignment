@@ -3,6 +3,12 @@
 import { useState, useEffect } from 'react'
 import { Journey } from '@/types'
 import { format } from 'date-fns'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { MapPin, Calendar, Truck, User } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface JourneySelectorProps {
   onSelectJourney: (journey: Journey) => void
@@ -43,119 +49,107 @@ export default function JourneySelector({ onSelectJourney, selectedJourneyId }: 
     }
   }
 
-  const getStatusBadgeColor = (status: string) => {
+  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
-      case 'NOT_STARTED':
-        return 'bg-gray-100 text-gray-800'
       case 'IN_TRANSIT':
-        return 'bg-blue-100 text-blue-800'
+        return 'default'
       case 'NEAR_DESTINATION':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'UNLOADING':
-        return 'bg-purple-100 text-purple-800'
-      case 'COMPLETED':
-        return 'bg-green-100 text-green-800'
+        return 'secondary'
       case 'STOPPAGE':
-        return 'bg-red-100 text-red-800'
+        return 'destructive'
+      case 'COMPLETED':
+        return 'outline'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'secondary'
     }
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4">
-      <h3 className="text-lg font-semibold mb-4 text-gray-800">Select Journey</h3>
-      
-      {/* Filters */}
-      <div className="mb-4 space-y-2">
-        <input
-          type="text"
-          placeholder="Filter by origin..."
-          value={filters.originCity}
-          onChange={(e) => setFilters({ ...filters, originCity: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <input
-          type="text"
-          placeholder="Filter by destination..."
-          value={filters.destinationCity}
-          onChange={(e) => setFilters({ ...filters, destinationCity: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <input
-          type="text"
-          placeholder="Filter by driver..."
-          value={filters.driverName}
-          onChange={(e) => setFilters({ ...filters, driverName: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <input
-          type="text"
-          placeholder="Filter by vehicle..."
-          value={filters.vehicleNumber}
-          onChange={(e) => setFilters({ ...filters, vehicleNumber: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <select
-          value={filters.status}
-          onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-          className="w-full border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All Statuses</option>
-          <option value="NOT_STARTED">Not Started</option>
-          <option value="IN_TRANSIT">In Transit</option>
-          <option value="NEAR_DESTINATION">Near Destination</option>
-          <option value="UNLOADING">Unloading</option>
-          <option value="COMPLETED">Completed</option>
-        </select>
-      </div>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Select Journey</CardTitle>
+        <CardDescription>Choose a journey to simulate</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Compact Filters */}
+        <div className="space-y-2">
+          <input
+            type="text"
+            placeholder="Filter by origin..."
+            value={filters.originCity}
+            onChange={(e) => setFilters({ ...filters, originCity: e.target.value })}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          <input
+            type="text"
+            placeholder="Filter by destination..."
+            value={filters.destinationCity}
+            onChange={(e) => setFilters({ ...filters, destinationCity: e.target.value })}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+        </div>
 
-      {/* Journey list */}
-      <div className="space-y-2 max-h-96 overflow-y-auto">
-        {loading ? (
-          <div className="text-center py-4 text-gray-500">Loading...</div>
-        ) : journeys.length === 0 ? (
-          <div className="text-center py-4 text-gray-500">No journeys found</div>
-        ) : (
-          journeys.map((journey) => (
-            <div
-              key={journey.id}
-              className={`border rounded-lg p-3 cursor-pointer transition-colors ${
-                selectedJourneyId === journey.id
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-              }`}
-              onClick={() => onSelectJourney(journey)}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div className="font-medium text-sm text-gray-900">
-                  {journey.originCity} → {journey.destinationCity}
-                </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusBadgeColor(journey.status)}`}>
-                  {journey.status.replace('_', ' ')}
-                </span>
-              </div>
-              <div className="text-xs text-gray-600 space-y-0.5">
-                <div>Driver: {journey.driverName}</div>
-                <div>Vehicle: {journey.vehicleNumber}</div>
-                <div>ETA: {format(new Date(journey.plannedETA), 'MMM dd, HH:mm')}</div>
-              </div>
-              {selectedJourneyId !== journey.id && (
-                <button
-                  className="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium py-1.5 px-3 rounded transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onSelectJourney(journey)
-                  }}
+        {/* Journey list */}
+        <ScrollArea className="h-[300px]">
+          <div className="space-y-2 pr-4">
+            {loading ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">Loading...</div>
+            ) : journeys.length === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">No journeys found</div>
+            ) : (
+              journeys.map((journey) => (
+                <Card
+                  key={journey.id}
+                  className={cn(
+                    "cursor-pointer transition-all hover:shadow-md",
+                    selectedJourneyId === journey.id && "ring-2 ring-primary"
+                  )}
+                  onClick={() => onSelectJourney(journey)}
                 >
-                  Simulate Journey
-                </button>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-    </div>
+                  <CardContent className="p-3">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                        {journey.originCity} → {journey.destinationCity}
+                      </div>
+                      <Badge variant={getStatusVariant(journey.status)} className="text-xs">
+                        {journey.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <User className="h-3 w-3" />
+                        {journey.driverName}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Truck className="h-3 w-3" />
+                        {journey.vehicleNumber}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(journey.plannedETA), 'MMM dd, HH:mm')}
+                      </div>
+                    </div>
+                    {selectedJourneyId !== journey.id && (
+                      <Button
+                        size="sm"
+                        className="w-full mt-2"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onSelectJourney(journey)
+                        }}
+                      >
+                        Simulate
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
   )
 }
 

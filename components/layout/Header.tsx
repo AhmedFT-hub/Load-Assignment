@@ -1,0 +1,78 @@
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { Truck, MapPin, PackageSearch } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+export default function Header() {
+  const pathname = usePathname()
+
+  const navigation = [
+    {
+      name: 'Simulation',
+      href: '/',
+      icon: Truck,
+      description: 'Real-time journey tracking'
+    },
+    {
+      name: 'Journeys',
+      href: '/journeys',
+      icon: MapPin,
+      description: 'Manage routes'
+    },
+    {
+      name: 'Loads',
+      href: '/loads',
+      icon: PackageSearch,
+      description: 'Available cargo'
+    },
+  ]
+
+  return (
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-16 items-center px-4 md:px-8">
+        <div className="mr-8 flex items-center space-x-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+            <Truck className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold leading-none">Load Assignment</span>
+            <span className="text-xs text-muted-foreground leading-none mt-0.5">AI Agent</span>
+          </div>
+        </div>
+
+        <nav className="flex items-center space-x-1 flex-1">
+          {navigation.map((item) => {
+            const isActive = pathname === item.href
+            const Icon = item.icon
+            
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "group inline-flex h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50",
+                  isActive
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground"
+                )}
+              >
+                <Icon className="mr-2 h-4 w-4" />
+                {item.name}
+              </Link>
+            )
+          })}
+        </nav>
+
+        <div className="flex items-center space-x-2">
+          <div className="hidden md:flex flex-col items-end">
+            <span className="text-xs font-semibold text-foreground">Production</span>
+            <span className="text-xs text-muted-foreground">v1.0.0</span>
+          </div>
+        </div>
+      </div>
+    </header>
+  )
+}
+

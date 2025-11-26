@@ -583,9 +583,9 @@ export default function Dashboard() {
   }, [isSimulating, simulationTick])
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Left Panel - Map */}
-      <div className="w-3/5 h-full">
+    <div className="flex h-[calc(100vh-4rem)] bg-background">
+      {/* Map Area */}
+      <div className="flex-1 relative">
         <MapboxMapView
           origin={selectedJourney ? { lat: selectedJourney.originLat, lng: selectedJourney.originLng } : undefined}
           destination={selectedJourney ? { lat: selectedJourney.destinationLat, lng: selectedJourney.destinationLng } : undefined}
@@ -603,59 +603,45 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Right Panel - Controls and Info */}
-      <div className="w-2/5 h-full overflow-y-auto p-4 space-y-4">
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold text-gray-800">Load Assignment Agent</h1>
-          <div className="flex gap-2">
-            <a
-              href="/journeys"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              Manage Journeys
-            </a>
-            <a
-              href="/loads"
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              Manage Loads
-            </a>
-          </div>
+      {/* Sidebar */}
+      <div className="w-96 border-l bg-card overflow-hidden flex flex-col">
+        <div className="p-4 border-b">
+          <JourneySelector
+            onSelectJourney={loadJourney}
+            selectedJourneyId={selectedJourney?.id}
+          />
         </div>
 
-        <JourneySelector
-          onSelectJourney={loadJourney}
-          selectedJourneyId={selectedJourney?.id}
-        />
-
         {selectedJourney && (
-          <>
-            <SimulationControls
-              isSimulating={isSimulating}
-              speed={speed}
-              journeyStatus={journeyStatus}
-              currentEtaMinutes={currentEtaMinutes}
-              currentDistanceKm={currentDistanceKm}
-              simulationTime={Math.floor(simulationTime)}
-              onStart={handleStart}
-              onPause={handlePause}
-              onReset={handleReset}
-              onJumpNearDestination={handleJumpNearDestination}
-              onSpeedChange={setSpeed}
-            />
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-4 space-y-4">
+              <SimulationControls
+                isSimulating={isSimulating}
+                speed={speed}
+                journeyStatus={journeyStatus}
+                currentEtaMinutes={currentEtaMinutes}
+                currentDistanceKm={currentDistanceKm}
+                simulationTime={Math.floor(simulationTime)}
+                onStart={handleStart}
+                onPause={handlePause}
+                onReset={handleReset}
+                onJumpNearDestination={handleJumpNearDestination}
+                onSpeedChange={setSpeed}
+              />
 
-            <JourneyInfoCard
-              journey={selectedJourney}
-              assignedLoad={selectedJourney.assignedLoad}
-            />
+              <JourneyInfoCard
+                journey={selectedJourney}
+                assignedLoad={selectedJourney.assignedLoad}
+              />
 
-            <CallStatusCard
-              callLogs={callLogs}
-              isWaitingForResponse={isWaitingForCall}
-            />
+              <CallStatusCard
+                callLogs={callLogs}
+                isWaitingForResponse={isWaitingForCall}
+              />
 
-            <EventTimeline events={events} />
-          </>
+              <EventTimeline events={events} />
+            </div>
+          </div>
         )}
       </div>
     </div>
