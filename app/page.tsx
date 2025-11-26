@@ -9,6 +9,7 @@ import JourneyInfoCard from '@/components/journeys/JourneyInfoCard'
 import CallStatusCard from '@/components/calls/CallStatusCard'
 import EventTimeline from '@/components/events/EventTimeline'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { convertMapboxCoordinates, calculateDistance } from '@/lib/directions'
 import {
   generateStoppages,
@@ -605,47 +606,85 @@ export default function Dashboard() {
       </div>
 
       {/* Sidebar */}
-      <div className="w-[400px] border-l bg-background flex flex-col">
-        {/* Journey Selector */}
-        <div className="p-4 border-b bg-card/50">
-          <JourneySelector
-            onSelectJourney={loadJourney}
-            selectedJourneyId={selectedJourney?.id}
-          />
-        </div>
+      <div className="w-[420px] border-l bg-background flex flex-col">
+        <Tabs defaultValue="simulation" className="flex-1 flex flex-col">
+          <TabsList className="w-full justify-start rounded-none border-b bg-muted/50 p-0 h-12">
+            <TabsTrigger value="simulation" className="rounded-none data-[state=active]:bg-background flex-1">
+              Simulation
+            </TabsTrigger>
+            <TabsTrigger value="details" className="rounded-none data-[state=active]:bg-background flex-1">
+              Details
+            </TabsTrigger>
+            <TabsTrigger value="events" className="rounded-none data-[state=active]:bg-background flex-1">
+              Events
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Scrollable Content */}
-        {selectedJourney && (
-          <ScrollArea className="flex-1">
-            <div className="p-4 space-y-3">
-              <SimulationControls
-                isSimulating={isSimulating}
-                speed={speed}
-                journeyStatus={journeyStatus}
-                currentEtaMinutes={currentEtaMinutes}
-                currentDistanceKm={currentDistanceKm}
-                simulationTime={Math.floor(simulationTime)}
-                onStart={handleStart}
-                onPause={handlePause}
-                onReset={handleReset}
-                onJumpNearDestination={handleJumpNearDestination}
-                onSpeedChange={setSpeed}
-              />
+          <TabsContent value="simulation" className="flex-1 mt-0 overflow-hidden">
+            <ScrollArea className="h-[calc(100vh-8rem)]">
+              <div className="p-4 space-y-4">
+                <JourneySelector
+                  onSelectJourney={loadJourney}
+                  selectedJourneyId={selectedJourney?.id}
+                />
 
-              <JourneyInfoCard
-                journey={selectedJourney}
-                assignedLoad={selectedJourney.assignedLoad}
-              />
+                {selectedJourney && (
+                  <SimulationControls
+                    isSimulating={isSimulating}
+                    speed={speed}
+                    journeyStatus={journeyStatus}
+                    currentEtaMinutes={currentEtaMinutes}
+                    currentDistanceKm={currentDistanceKm}
+                    simulationTime={Math.floor(simulationTime)}
+                    onStart={handleStart}
+                    onPause={handlePause}
+                    onReset={handleReset}
+                    onJumpNearDestination={handleJumpNearDestination}
+                    onSpeedChange={setSpeed}
+                  />
+                )}
+              </div>
+            </ScrollArea>
+          </TabsContent>
 
-              <CallStatusCard
-                callLogs={callLogs}
-                isWaitingForResponse={isWaitingForCall}
-              />
+          <TabsContent value="details" className="flex-1 mt-0 overflow-hidden">
+            <ScrollArea className="h-[calc(100vh-8rem)]">
+              <div className="p-4 space-y-4">
+                {selectedJourney ? (
+                  <>
+                    <JourneyInfoCard
+                      journey={selectedJourney}
+                      assignedLoad={selectedJourney.assignedLoad}
+                    />
 
-              <EventTimeline events={events} />
-            </div>
-          </ScrollArea>
-        )}
+                    <CallStatusCard
+                      callLogs={callLogs}
+                      isWaitingForResponse={isWaitingForCall}
+                    />
+                  </>
+                ) : (
+                  <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+                    Select a journey to view details
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="events" className="flex-1 mt-0 overflow-hidden">
+            <ScrollArea className="h-[calc(100vh-8rem)]">
+              <div className="p-4">
+                {selectedJourney ? (
+                  <EventTimeline events={events} />
+                ) : (
+                  <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+                    Select a journey to view events
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )
