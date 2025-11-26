@@ -50,8 +50,14 @@ export default function Header() {
     e.stopPropagation()
     e.nativeEvent.stopImmediatePropagation()
     console.log('Navigating to:', href)
-    router.push(href)
-    window.location.href = href // Fallback
+    
+    // Use window.location for reliable navigation
+    if (href === pathname) {
+      return // Already on this page
+    }
+    
+    // Force navigation
+    window.location.href = href
   }
 
   return (
