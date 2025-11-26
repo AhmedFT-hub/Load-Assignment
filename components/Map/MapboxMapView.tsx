@@ -244,7 +244,7 @@ export default function MapboxMapView({
       <Map
         ref={mapRef}
         {...viewState}
-        onMove={evt => setViewState(evt.viewState)}
+        onMoveEnd={evt => setViewState(evt.viewState)}
         onClick={handleMapClick}
         mapStyle="mapbox://styles/mapbox/streets-v12"
         mapboxAccessToken={mapboxToken}

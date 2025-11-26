@@ -21,3 +21,4 @@ CREATE INDEX "Zone_category_idx" ON "Zone"("category");
 -- CreateIndex
 CREATE INDEX "Zone_name_idx" ON "Zone"("name");
 
+

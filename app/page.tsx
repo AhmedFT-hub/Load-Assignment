@@ -820,8 +820,8 @@ export default function Dashboard() {
             type: 'warning',
             show: true,
             actions: [
-              { label: 'Accept Load', action: 'accept-load' },
-              { label: 'Reject Load', action: 'reject-load' },
+              { label: 'Accept Load', action: 'accept_load' },
+              { label: 'Reject Load', action: 'reject_load' },
             ],
           }])
         }
@@ -886,6 +886,9 @@ export default function Dashboard() {
             status: 'ASSIGNED',
           }),
         })
+        
+        // Fetch visualization routes (destination to pickup, pickup to drop)
+        await fetchNextLoadRoutes(pendingLoad)
         
         await addEvent({
           type: 'LOAD',
@@ -1084,14 +1087,60 @@ export default function Dashboard() {
           setSelectedJourney(updatedJourney)
           setCallLogs(updatedJourney.callLogs || [])
           
-          // Fetch next load routes
-          if (updatedJourney.assignedLoad) {
-            await fetchNextLoadRoutes(updatedJourney.assignedLoad)
+          // Plot path to pickup location
+          if (updatedJourney.assignedLoad && truckPosition) {
+            try {
+              // Plot path from current position to load pickup location
+              const directionsResponse = await fetch('/api/directions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  origin: truckPosition,
+                  destination: { lat: updatedJourney.assignedLoad.pickupLat, lng: updatedJourney.assignedLoad.pickupLng },
+                }),
+              })
+
+              if (directionsResponse.ok) {
+                const directionsData = await directionsResponse.json()
+                const pickupPath = convertMapboxCoordinates(directionsData.routes[0].geometry.coordinates)
+                
+                // Calculate total distance
+                let totalDistance = 0
+                for (let i = 1; i < pickupPath.length; i++) {
+                  totalDistance += calculateDistance(pickupPath[i - 1], pickupPath[i])
+                }
+                
+                // Update route to go to pickup location
+                setRoutePath(pickupPath)
+                setTotalDistanceKm(totalDistance)
+                setProgress(0)
+                setCompletedPath([truckPosition]) // Start from current position
+                
+                // Fetch visualization routes (destination to pickup, pickup to drop)
+                await fetchNextLoadRoutes(updatedJourney.assignedLoad)
+                
+                // Resume simulation
+                setIsSimulating(true)
+                setJourneyStatus('IN_TRANSIT')
+                
+                // Update map alert
+                setMapAlerts(prev => prev.map(alert => 
+                  alert.id === 'call-initiated'
+                    ? { ...alert, title: 'Load Accepted', message: `Routing to pickup: ${updatedJourney.assignedLoad.pickupCity}`, type: 'success', show: false }
+                    : alert
+                ))
+                
+                // Clear pending load
+                setPendingLoad(null)
+              }
+            } catch (error) {
+              console.error('Error plotting path to pickup:', error)
+            }
           }
           
           await addEvent({
             type: 'LOAD',
-            label: 'Driver accepted next load - routes displayed',
+            label: `Load accepted - Routing to pickup: ${updatedJourney.assignedLoad?.pickupCity || 'Unknown'}`,
             details: {
               loadId: updatedJourney.assignedLoadId,
               load: updatedJourney.assignedLoad,
@@ -1104,7 +1153,7 @@ export default function Dashboard() {
     }, 3000) // Poll every 3 seconds
 
     return () => clearInterval(pollInterval)
-  }, [selectedJourney, isWaitingForCall])
+  }, [selectedJourney, isWaitingForCall, truckPosition])
 
   // Simulation controls
   const handleStart = () => {
