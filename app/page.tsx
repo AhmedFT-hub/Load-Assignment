@@ -420,7 +420,7 @@ export default function Dashboard() {
                 const data = await response.json()
                 console.log('API response data:', data)
                 
-                if (data.success) {
+                if (response.ok && data.success) {
                   console.log('Detour call initiated successfully:', data.ringgResponse?.callId)
                   setDetourCallStatus('pending')
                   await addEvent({
@@ -434,11 +434,12 @@ export default function Dashboard() {
                     },
                   })
                 } else {
-                  console.error('Failed to initiate detour call:', data.error)
+                  const errorMessage = data.error || data.details || `HTTP ${response.status}: ${response.statusText}`
+                  console.error('Failed to initiate detour call:', errorMessage, data)
                   await addEvent({
                     type: 'ERROR',
-                    label: `Failed to initiate detour call: ${data.error || 'Unknown error'}`,
-                    details: { zoneName: zone.name, error: data.error },
+                    label: `Failed to initiate detour call: ${errorMessage}`,
+                    details: { zoneName: zone.name, error: errorMessage, fullError: data },
                   })
                 }
               } catch (error) {
