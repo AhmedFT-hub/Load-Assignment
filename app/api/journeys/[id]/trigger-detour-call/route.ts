@@ -51,14 +51,21 @@ export async function POST(
       currentPosition,
     })
     
-    const ringgResponse = await initiateDetourCall({
-      driverName: journey.driverName,
-      driverPhone: journey.driverPhone,
-      zoneName: zoneName,
-      currentPosition: currentPosition ? { lat: currentPosition.lat, lng: currentPosition.lng } : undefined,
-    })
-    
-    console.log('Ringg response:', ringgResponse)
+    let ringgResponse
+    try {
+      ringgResponse = await initiateDetourCall({
+        driverName: journey.driverName,
+        driverPhone: journey.driverPhone,
+        zoneName: zoneName,
+        currentPosition: currentPosition ? { lat: currentPosition.lat, lng: currentPosition.lng } : undefined,
+      })
+      console.log('Ringg response received:', ringgResponse)
+    } catch (ringgError) {
+      console.error('Ringg call threw an exception:', ringgError)
+      const errorMessage = ringgError instanceof Error ? ringgError.message : String(ringgError)
+      console.error('Error message:', errorMessage)
+      throw new Error(`Ringg API call failed: ${errorMessage}`)
+    }
 
     // Check if call was successful
     if (!ringgResponse.success) {
