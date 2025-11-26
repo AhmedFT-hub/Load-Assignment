@@ -186,6 +186,18 @@ export default function Dashboard() {
         },
       })
       
+      // Add map pin alert for stoppage
+      if (truckPosition) {
+        setMapAlerts(prev => [...prev, {
+          id: 'stoppage',
+          position: truckPosition,
+          title: 'Traffic Stoppage',
+          message: `Waiting for ${Math.ceil(stoppage.duration)} seconds...`,
+          type: 'error',
+          show: true,
+        }])
+      }
+      
       return
     }
 
@@ -198,12 +210,21 @@ export default function Dashboard() {
         setStoppageTimer(null)
         setJourneyStatus('IN_TRANSIT')
         
+        // Remove stoppage alert
+        setMapAlerts(prev => prev.filter(alert => alert.id !== 'stoppage'))
+        
         await addEvent({
           type: 'STOPPAGE',
           label: 'Stoppage ended',
           details: { position: truckPosition },
         })
       } else {
+        // Update stoppage alert with remaining time
+        setMapAlerts(prev => prev.map(alert => 
+          alert.id === 'stoppage' 
+            ? { ...alert, message: `Waiting for ${Math.ceil(newTimer)} seconds...` }
+            : alert
+        ))
         setStoppageTimer(newTimer)
       }
       return

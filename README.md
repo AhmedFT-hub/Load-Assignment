@@ -5,6 +5,7 @@ A production-grade POC application demonstrating an intelligent load assignment 
 ## 🎯 Features
 
 - **Real-time Journey Simulation**: Animated truck movement along actual Mapbox routes with heading rotation and 10km geofence visualization
+- **Live Stoppage Indicators**: Red pin cards appear on map during traffic stoppages with real-time countdown timers
 - **Intelligent Load Assignment**: Automatically finds and assigns the nearest available load when entering 10km geofence
 - **Automated Calling**: Real calls via Ringg.ai API when truck enters destination geofence (simulation pauses)
 - **Webhook Integration**: Handles call outcomes (Accepted/Rejected/No Answer/Busy) with automatic retry logic
@@ -226,11 +227,13 @@ DATABASE_URL="postgresql://localhost:5432/load_assignment?schema=public"
 
 1. **Journey Starts**: Truck begins moving along route with visual progress indicator
 2. **Stoppages**: 1-2 random traffic stops occur (10-20 seconds each)
+   - Red error pin appears at truck location showing countdown timer
+   - Pin updates in real-time: "Waiting for X seconds..."
+   - Automatically disappears when stoppage ends
 3. **Geofence Entry** (10km radius): 
-   - Blue info pin appears on map at truck location
    - **Simulation automatically pauses**
    - System finds nearest available load
-   - Initiates Ringg.ai call to driver with orange warning pin
+   - Orange warning pin appears: "Load Assignment Call Initiated"
 4. **Webhook Response**:
    - **Accepted**: Load assigned, shows dotted route to next pickup/drop, resume simulation
    - **Rejected/No Answer/Busy**: Automatically tries next nearest load
