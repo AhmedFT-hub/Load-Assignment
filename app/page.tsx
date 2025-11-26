@@ -8,7 +8,7 @@ import SimulationControls from '@/components/simulation/SimulationControls'
 import JourneyInfoCard from '@/components/journeys/JourneyInfoCard'
 import CallStatusCard from '@/components/calls/CallStatusCard'
 import EventTimeline from '@/components/events/EventTimeline'
-import { decodePolyline } from '@/lib/directions'
+import { convertMapboxCoordinates } from '@/lib/directions'
 import {
   generateStoppages,
   interpolatePosition,
@@ -20,8 +20,8 @@ import {
   Stoppage,
 } from '@/lib/simulation'
 
-// Dynamically import Google Map to avoid SSR issues
-const GoogleMapView = dynamic(() => import('@/components/Map/GoogleMapView'), {
+// Dynamically import Mapbox Map to avoid SSR issues
+const MapboxMapView = dynamic(() => import('@/components/Map/MapboxMapView'), {
   ssr: false,
   loading: () => <div className="w-full h-full bg-gray-100 flex items-center justify-center">Loading map...</div>,
 })
@@ -68,7 +68,7 @@ export default function Dashboard() {
       setEvents(fullJourney.simulationEvents || [])
       setCallLogs(fullJourney.callLogs || [])
       
-      // Fetch route from Google Directions API
+      // Fetch route from Mapbox Directions API
       const directionsResponse = await fetch('/api/directions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -84,14 +84,13 @@ export default function Dashboard() {
       
       const directionsData = await directionsResponse.json()
       const route = directionsData.routes[0]
-      const leg = route.legs[0]
       
-      // Decode polyline
-      const path = decodePolyline(route.overview_polyline.points)
+      // Convert Mapbox coordinates to our format
+      const path = convertMapboxCoordinates(route.geometry.coordinates)
       setRoutePath(path)
       
-      // Set total distance
-      const distanceKm = leg.distance.value / 1000
+      // Set total distance (Mapbox returns meters)
+      const distanceKm = route.distance / 1000
       setTotalDistanceKm(distanceKm)
       
       // Generate stoppages
@@ -421,7 +420,7 @@ export default function Dashboard() {
     <div className="flex h-screen bg-gray-50">
       {/* Left Panel - Map */}
       <div className="w-3/5 h-full">
-        <GoogleMapView
+        <MapboxMapView
           origin={selectedJourney ? { lat: selectedJourney.originLat, lng: selectedJourney.originLng } : undefined}
           destination={selectedJourney ? { lat: selectedJourney.destinationLat, lng: selectedJourney.destinationLng } : undefined}
           truckPosition={truckPosition || undefined}

@@ -1,5 +1,5 @@
 /**
- * Google Directions API wrapper for server-side route calculations
+ * Mapbox Directions API wrapper for server-side route calculations
  */
 
 export interface DirectionsRequest {
@@ -9,46 +9,37 @@ export interface DirectionsRequest {
 
 export interface DirectionsResult {
   routes: Array<{
-    legs: Array<{
-      distance: { value: number; text: string }
-      duration: { value: number; text: string }
-      start_location: { lat: number; lng: number }
-      end_location: { lat: number; lng: number }
-      steps: Array<{
-        distance: { value: number; text: string }
-        duration: { value: number; text: string }
-        start_location: { lat: number; lng: number }
-        end_location: { lat: number; lng: number }
-        polyline: { points: string }
-      }>
-    }>
-    overview_polyline: { points: string }
+    distance: number // meters
+    duration: number // seconds
+    geometry: {
+      coordinates: Array<[number, number]> // [lng, lat]
+    }
   }>
 }
 
 /**
- * Get directions from Google Directions API
+ * Get directions from Mapbox Directions API
  * @param request - Origin and destination coordinates
  * @returns Promise with directions result
  */
 export async function getDirections(
   request: DirectionsRequest
 ): Promise<DirectionsResult> {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY
+  const apiKey = process.env.MAPBOX_ACCESS_TOKEN
 
   if (!apiKey) {
-    throw new Error('GOOGLE_MAPS_API_KEY is not configured')
+    throw new Error('MAPBOX_ACCESS_TOKEN is not configured')
   }
 
   const { origin, destination } = request
   
-  const url = new URL('https://maps.googleapis.com/maps/api/directions/json')
-  url.searchParams.append('origin', `${origin.lat},${origin.lng}`)
-  url.searchParams.append('destination', `${destination.lat},${destination.lng}`)
-  url.searchParams.append('key', apiKey)
+  // Mapbox format: lng,lat;lng,lat
+  const coordinates = `${origin.lng},${origin.lat};${destination.lng},${destination.lat}`
+  
+  const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?geometries=geojson&access_token=${apiKey}`
 
   try {
-    const response = await fetch(url.toString())
+    const response = await fetch(url)
 
     if (!response.ok) {
       throw new Error(`Directions API failed: ${response.status} ${response.statusText}`)
@@ -56,8 +47,8 @@ export async function getDirections(
 
     const data = await response.json()
 
-    if (data.status !== 'OK') {
-      throw new Error(`Directions API error: ${data.status} - ${data.error_message || 'Unknown error'}`)
+    if (!data.routes || data.routes.length === 0) {
+      throw new Error('No routes found')
     }
 
     return data as DirectionsResult
@@ -70,50 +61,14 @@ export async function getDirections(
 }
 
 /**
- * Decode polyline string to array of lat/lng coordinates
- * @param encoded - Encoded polyline string
- * @returns Array of coordinates
+ * Convert Mapbox coordinates to our format
+ * @param coordinates - Array of [lng, lat] from Mapbox
+ * @returns Array of {lat, lng} objects
  */
-export function decodePolyline(encoded: string): Array<{ lat: number; lng: number }> {
-  const poly: Array<{ lat: number; lng: number }> = []
-  let index = 0
-  const len = encoded.length
-  let lat = 0
-  let lng = 0
-
-  while (index < len) {
-    let b: number
-    let shift = 0
-    let result = 0
-
-    do {
-      b = encoded.charCodeAt(index++) - 63
-      result |= (b & 0x1f) << shift
-      shift += 5
-    } while (b >= 0x20)
-
-    const dlat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1
-    lat += dlat
-
-    shift = 0
-    result = 0
-
-    do {
-      b = encoded.charCodeAt(index++) - 63
-      result |= (b & 0x1f) << shift
-      shift += 5
-    } while (b >= 0x20)
-
-    const dlng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1
-    lng += dlng
-
-    poly.push({
-      lat: lat / 1e5,
-      lng: lng / 1e5,
-    })
-  }
-
-  return poly
+export function convertMapboxCoordinates(
+  coordinates: Array<[number, number]>
+): Array<{ lat: number; lng: number }> {
+  return coordinates.map(([lng, lat]) => ({ lat, lng }))
 }
 
 /**
@@ -174,4 +129,3 @@ export function calculateBearing(
 
   return (degrees + 360) % 360
 }
-

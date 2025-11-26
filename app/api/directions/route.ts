@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDirections } from '@/lib/directions'
 
-// POST /api/directions - Get directions from Google Directions API
+// POST /api/directions - Get directions from Mapbox Directions API
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -24,4 +24,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

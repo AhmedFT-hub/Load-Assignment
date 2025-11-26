@@ -50,9 +50,10 @@ Create `.env.local` file in the root directory:
 # For Supabase: postgresql://postgres:password@db.xxx.supabase.co:5432/postgres
 DATABASE_URL="postgresql://user:password@localhost:5432/load_assignment?schema=public"
 
-# Google Maps
-GOOGLE_MAPS_API_KEY="your_google_maps_api_key_here"
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="your_google_maps_api_key_here"
+# Mapbox
+# Get from: https://account.mapbox.com/access-tokens/
+MAPBOX_ACCESS_TOKEN="your_mapbox_access_token_here"
+NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN="your_mapbox_access_token_here"
 
 # Ringg.ai API
 RINGG_API_KEY="your_ringg_api_key_here"
@@ -117,19 +118,19 @@ createdb load_assignment
 DATABASE_URL="postgresql://localhost:5432/load_assignment?schema=public"
 ```
 
-## 🗺️ Google Maps API Setup
+## 🗺️ Mapbox API Setup
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project or select existing
-3. Enable APIs:
-   - Maps JavaScript API
-   - Directions API
-4. Create credentials (API Key)
-5. Restrict key (optional but recommended):
-   - Application restrictions: HTTP referrers (websites)
-   - Add your domain: `localhost:3000`, `*.vercel.app`
-   - API restrictions: Select Maps JavaScript API + Directions API
-6. Copy API key to `.env.local`
+1. Go to [Mapbox](https://account.mapbox.com/)
+2. Sign up for free account (free tier includes 50,000 free monthly requests)
+3. Go to [Access Tokens](https://account.mapbox.com/access-tokens/)
+4. Copy your **Default public token** OR create a new token
+5. Add to `.env.local`:
+   ```
+   MAPBOX_ACCESS_TOKEN="your_token_here"
+   NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN="your_token_here"
+   ```
+
+**Note:** Mapbox tokens work across all domains by default, no restrictions needed!
 
 ## 📞 Ringg.ai Configuration
 
