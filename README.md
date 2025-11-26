@@ -2,6 +2,8 @@
 
 A production-grade application demonstrating an intelligent load assignment system with real-time vehicle tracking, automated calling via Ringg.ai, and dynamic route simulation.
 
+<!-- Updated: Fixed detour call foreign key constraint -->
+
 ## 🎯 Features
 
 - **Real-time Journey Simulation**: Animated truck movement along actual Mapbox routes with heading rotation and 10km geofence visualization
