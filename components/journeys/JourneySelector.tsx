@@ -71,7 +71,7 @@ export default function JourneySelector({ onSelectJourney, selectedJourneyId }: 
       </div>
 
       {/* Journey list */}
-      <ScrollArea className="h-[340px]">
+      <ScrollArea className="h-[calc(100vh-20rem)]">
         <div className="space-y-2 pr-3">
             {loading ? (
               <div className="text-center py-8 text-sm text-muted-foreground">Loading...</div>

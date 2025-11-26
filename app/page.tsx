@@ -620,31 +620,35 @@ export default function Dashboard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="simulation" className="flex-1 mt-0 overflow-hidden">
-            <ScrollArea className="h-[calc(100vh-8rem)]">
-              <div className="p-4 space-y-4">
+          <TabsContent value="simulation" className="flex-1 mt-0 flex flex-col overflow-hidden">
+            {/* Journey Selector with its own scroll */}
+            <div className="flex-1 overflow-hidden">
+              <div className="p-4">
                 <JourneySelector
                   onSelectJourney={loadJourney}
                   selectedJourneyId={selectedJourney?.id}
                 />
-
-                {selectedJourney && (
-                  <SimulationControls
-                    isSimulating={isSimulating}
-                    speed={speed}
-                    journeyStatus={journeyStatus}
-                    currentEtaMinutes={currentEtaMinutes}
-                    currentDistanceKm={currentDistanceKm}
-                    simulationTime={Math.floor(simulationTime)}
-                    onStart={handleStart}
-                    onPause={handlePause}
-                    onReset={handleReset}
-                    onJumpNearDestination={handleJumpNearDestination}
-                    onSpeedChange={setSpeed}
-                  />
-                )}
               </div>
-            </ScrollArea>
+            </div>
+
+            {/* Simulation Controls - Fixed section */}
+            {selectedJourney && (
+              <div className="border-t bg-card/30 p-4">
+                <SimulationControls
+                  isSimulating={isSimulating}
+                  speed={speed}
+                  journeyStatus={journeyStatus}
+                  currentEtaMinutes={currentEtaMinutes}
+                  currentDistanceKm={currentDistanceKm}
+                  simulationTime={Math.floor(simulationTime)}
+                  onStart={handleStart}
+                  onPause={handlePause}
+                  onReset={handleReset}
+                  onJumpNearDestination={handleJumpNearDestination}
+                  onSpeedChange={setSpeed}
+                />
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="details" className="flex-1 mt-0 overflow-hidden">
