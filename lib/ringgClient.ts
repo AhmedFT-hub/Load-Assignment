@@ -81,8 +81,10 @@ export async function initiateCall(
     : `+${fromNumber}`
 
   // Get current time in Asia/Kolkata timezone for call scheduling
+  // Format as ISO 8601 without timezone (naive datetime) - API requires format like "2025-11-24T15:30:00"
   const now = new Date()
-  const scheduledAt = now.toISOString()
+  // Convert to local time string and format as ISO without timezone
+  const scheduledAt = now.toISOString().replace('Z', '').slice(0, 19) // Remove 'Z' and milliseconds: "2025-11-27T03:30:00"
 
   // Format appointment date (use provided date or default to tomorrow)
   const appointmentDate = request.appointmentDate || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -243,8 +245,10 @@ export async function initiateDetourCall(
     : `+${fromNumber}`
 
   // Get current time in Asia/Kolkata timezone for call scheduling
+  // Format as ISO 8601 without timezone (naive datetime) - API requires format like "2025-11-24T15:30:00"
   const now = new Date()
-  const scheduledAt = now.toISOString()
+  // Convert to local time string and format as ISO without timezone
+  const scheduledAt = now.toISOString().replace('Z', '').slice(0, 19) // Remove 'Z' and milliseconds: "2025-11-27T03:30:00"
 
   // Build custom_args_values (only include defined values)
   const customArgsValues: Record<string, string> = {
