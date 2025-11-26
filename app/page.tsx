@@ -39,7 +39,7 @@ export default function Dashboard() {
   // Journey and simulation state
   const [selectedJourney, setSelectedJourney] = useState<Journey | null>(null)
   const [isSimulating, setIsSimulating] = useState(false)
-  const [speed, setSpeed] = useState(10) // Start with 10x speed by default
+  const [speed, setSpeed] = useState(50) // Start with 50x speed by default (5x increase)
   const [progress, setProgress] = useState(0)
   const [simulationTime, setSimulationTime] = useState(0)
   const [routePath, setRoutePath] = useState<Array<{ lat: number; lng: number }>>([])
