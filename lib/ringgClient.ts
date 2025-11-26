@@ -94,24 +94,24 @@ export async function initiateCall(
 
 /**
  * Initiate a detour/redzone call via Ringg.ai API
- * Uses the production API endpoint format
+ * Uses the production API endpoint format with X-API-KEY authentication
  * @param request - Detour call request details
  * @returns Promise with call response
  */
 export async function initiateDetourCall(
   request: RinggDetourCallRequest
 ): Promise<RinggCallResponse> {
-  const apiToken = process.env.RINGG_API_TOKEN || process.env.RINGG_API_KEY
-  const fromNumberId = process.env.RINGG_FROM_NUMBER_ID
+  const apiKey = process.env.RINGG_API_KEY
+  const fromNumber = process.env.RINGG_FROM_NUMBER
   const agentId = process.env.RINGG_AGENT_ID
   const endpoint = process.env.RINGG_DETOUR_ENDPOINT || 'https://prod-api.ringg.ai/ca/api/v0/calling/outbound/individual'
 
-  if (!apiToken) {
-    throw new Error('RINGG_API_TOKEN or RINGG_API_KEY is not configured')
+  if (!apiKey) {
+    throw new Error('RINGG_API_KEY is not configured')
   }
 
-  if (!fromNumberId) {
-    throw new Error('RINGG_FROM_NUMBER_ID is not configured')
+  if (!fromNumber) {
+    throw new Error('RINGG_FROM_NUMBER is not configured')
   }
 
   if (!agentId) {
@@ -123,10 +123,20 @@ export async function initiateDetourCall(
     ? request.driverPhone 
     : `+${request.driverPhone}`
 
+  // Format from number (ensure it starts with +)
+  const formattedFromNumber = fromNumber.startsWith('+')
+    ? fromNumber
+    : `+${fromNumber}`
+
+  // Get current time in Asia/Kolkata timezone for call scheduling
+  const now = new Date()
+  const scheduledAt = now.toISOString()
+
   const payload = {
     name: request.driverName.toUpperCase(),
-    from_number_id: fromNumberId,
+    mobile_number: mobileNumber,
     agent_id: agentId,
+    from_number: formattedFromNumber,
     custom_args_values: {
       callee_name: request.driverName.toUpperCase(),
       mobile_number: mobileNumber,
@@ -135,7 +145,23 @@ export async function initiateDetourCall(
         ? `${request.currentPosition.lat},${request.currentPosition.lng}` 
         : undefined,
     },
-    mobile_number: mobileNumber,
+    call_config: {
+      idle_timeout_warning: 10,
+      idle_timeout_end: 15,
+      max_call_length: 300,
+      call_retry_config: {
+        retry_count: 3,
+        retry_busy: 30,
+        retry_not_picked: 30,
+        retry_failed: 30,
+      },
+      call_time: {
+        call_start_time: '08:00',
+        call_end_time: '20:00',
+        timezone: 'Asia/Kolkata',
+        scheduled_at: scheduledAt,
+      },
+    },
   }
 
   try {
@@ -146,8 +172,7 @@ export async function initiateDetourCall(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiToken}`,
-        'Accept': 'application/json, text/plain, */*',
+        'X-API-KEY': apiKey,
       },
       body: JSON.stringify(payload),
     })
