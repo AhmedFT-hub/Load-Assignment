@@ -465,22 +465,83 @@ export default function Dashboard() {
     isOnDetour,
   ])
 
+  // Find closest point on route to current position and calculate progress
+  const findClosestPointOnRoute = (route: Array<{ lat: number; lng: number }>, position: { lat: number; lng: number }) => {
+    if (route.length === 0) return 0
+    
+    let minDistance = Infinity
+    let closestIndex = 0
+    let closestProgress = 0
+    
+    // Calculate cumulative distances
+    const distances: number[] = [0]
+    let totalDistance = 0
+    for (let i = 1; i < route.length; i++) {
+      const dist = calculateDistance(route[i - 1], route[i])
+      totalDistance += dist
+      distances.push(totalDistance)
+    }
+    
+    // Find closest segment
+    for (let i = 0; i < route.length - 1; i++) {
+      const p1 = route[i]
+      const p2 = route[i + 1]
+      
+      // Calculate distance from position to segment
+      const distToP1 = calculateDistance(position, p1)
+      const distToP2 = calculateDistance(position, p2)
+      const segmentDist = calculateDistance(p1, p2)
+      
+      // Find closest point on segment using proper geographic calculation
+      // Project position onto the segment line
+      const dx = p2.lng - p1.lng
+      const dy = p2.lat - p1.lat
+      const d2 = dx * dx + dy * dy
+      
+      let t = 0
+      if (d2 > 0) {
+        const tNum = (position.lng - p1.lng) * dx + (position.lat - p1.lat) * dy
+        t = Math.max(0, Math.min(1, tNum / d2))
+      }
+      
+      const closestPoint = {
+        lat: p1.lat + t * (p2.lat - p1.lat),
+        lng: p1.lng + t * (p2.lng - p1.lng),
+      }
+      
+      const distToSegment = calculateDistance(position, closestPoint)
+      
+      if (distToSegment < minDistance) {
+        minDistance = distToSegment
+        closestIndex = i
+        // Calculate progress along route
+        const distanceToClosest = distances[i] + t * (distances[i + 1] - distances[i])
+        closestProgress = totalDistance > 0 ? distanceToClosest / totalDistance : 0
+      }
+    }
+    
+    return Math.max(0, Math.min(1, closestProgress))
+  }
+
   const handleDetourAction = async () => {
     if (!redzoneZone || !selectedJourney || !truckPosition) return
 
     // Calculate and set detour route
     const detour = await calculateDetourRoute(redzoneZone)
-    if (detour) {
+    if (detour && detour.length > 0) {
       // Calculate total distance for detour route
       let detourTotalDistance = 0
       for (let i = 1; i < detour.length; i++) {
         detourTotalDistance += calculateDistance(detour[i - 1], detour[i])
       }
       
+      // Find closest point on detour route to current position
+      const initialProgress = findClosestPointOnRoute(detour, truckPosition)
+      
       setDetourRoute(detour)
       setRoutePath(detour) // Update route to detour
       setTotalDistanceKm(detourTotalDistance) // Update total distance
-      setProgress(0) // Reset progress for new route
+      setProgress(initialProgress) // Start from closest point on detour route, not from beginning
       // DON'T reset completed path - preserve traveled path before detour
       // The completed path will continue to grow as vehicle moves on detour
       setIsOnDetour(true)
