@@ -64,15 +64,15 @@ export default function JourneySelector({ onSelectJourney, selectedJourneyId }: 
   }
 
   return (
-    <div className="space-y-3">
-      <div>
+    <div className="flex flex-col h-full">
+      <div className="mb-3">
         <h3 className="text-sm font-semibold">Select Journey</h3>
         <p className="text-xs text-muted-foreground">Choose a journey to simulate</p>
       </div>
 
       {/* Journey list */}
-      <ScrollArea className="h-[calc(100vh-20rem)]">
-        <div className="space-y-2 pr-3">
+      <ScrollArea className="flex-1">
+        <div className="space-y-2 pr-3 pb-3">
             {loading ? (
               <div className="text-center py-8 text-sm text-muted-foreground">Loading...</div>
             ) : journeys.length === 0 ? (
