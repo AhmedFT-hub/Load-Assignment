@@ -37,5 +37,18 @@ body {
   .animate-slide-in {
     animation: slide-in 0.3s ease-out;
   }
+  
+  @keyframes bounce-subtle {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  
+  .animate-bounce-subtle {
+    animation: bounce-subtle 2s ease-in-out infinite;
+  }
 }
 

@@ -8,7 +8,6 @@ import SimulationControls from '@/components/simulation/SimulationControls'
 import JourneyInfoCard from '@/components/journeys/JourneyInfoCard'
 import CallStatusCard from '@/components/calls/CallStatusCard'
 import EventTimeline from '@/components/events/EventTimeline'
-import AlertCard from '@/components/alerts/AlertCard'
 import { convertMapboxCoordinates, calculateDistance } from '@/lib/directions'
 import {
   generateStoppages,
@@ -58,12 +57,18 @@ export default function Dashboard() {
   const [nearDestinationTriggered, setNearDestinationTriggered] = useState(false)
   const [isInGeofence, setIsInGeofence] = useState(false)
   const [geofenceEntered, setGeofenceEntered] = useState(false)
-  const [showGeofenceAlert, setShowGeofenceAlert] = useState(false)
-  const [showCallInitiatedAlert, setShowCallInitiatedAlert] = useState(false)
   const [nextLoadRoutes, setNextLoadRoutes] = useState<{
     toPickup: Array<{ lat: number; lng: number }>
     toDestination: Array<{ lat: number; lng: number }>
   } | null>(null)
+  const [mapAlerts, setMapAlerts] = useState<Array<{
+    id: string
+    position: { lat: number; lng: number }
+    title: string
+    message: string
+    type: 'info' | 'success' | 'warning' | 'error'
+    show: boolean
+  }>>([])
 
   const simulationInterval = useRef<NodeJS.Timeout | null>(null)
   const lastTickTime = useRef<number>(Date.now())
@@ -238,7 +243,17 @@ export default function Dashboard() {
 
     if (inGeofence && !geofenceEntered) {
       setGeofenceEntered(true)
-      setShowGeofenceAlert(true)
+      // Add map pin alert at truck location
+      if (truckPosition) {
+        setMapAlerts(prev => [...prev, {
+          id: 'geofence-entered',
+          position: truckPosition,
+          title: 'Entering Destination Zone',
+          message: 'Truck has entered 10km geofence. Preparing for load assignment...',
+          type: 'info',
+          show: true,
+        }])
+      }
       await addEvent({
         type: 'INFO',
         label: `Truck entered 10km geofence of destination`,
@@ -339,7 +354,17 @@ export default function Dashboard() {
     if (!selectedJourney || isWaitingForCall) return
 
     setIsWaitingForCall(true)
-    setShowCallInitiatedAlert(true)
+    // Add map pin alert at truck location
+    if (truckPosition) {
+      setMapAlerts(prev => [...prev, {
+        id: 'call-initiated',
+        position: truckPosition,
+        title: 'Load Assignment Call Initiated',
+        message: 'Calling driver for next load assignment. Waiting for response...',
+        type: 'warning',
+        show: true,
+      }])
+    }
 
     try {
       const response = await fetch(`/api/journeys/${selectedJourney.id}/trigger-call`, {
@@ -477,8 +502,7 @@ export default function Dashboard() {
     setNearDestinationTriggered(false)
     setIsInGeofence(false)
     setGeofenceEntered(false)
-    setShowGeofenceAlert(false)
-    setShowCallInitiatedAlert(false)
+    setMapAlerts([])
     setNextLoadRoutes(null)
     
     if (selectedJourney) {
@@ -549,25 +573,6 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Alert Cards */}
-      <AlertCard
-        show={showGeofenceAlert}
-        title="Entering Destination Zone"
-        message="Truck has entered 10km geofence of destination. Preparing for load assignment..."
-        type="info"
-        autoClose={5000}
-        onClose={() => setShowGeofenceAlert(false)}
-      />
-      
-      <AlertCard
-        show={showCallInitiatedAlert}
-        title="Load Assignment Call Initiated"
-        message="Calling driver for next load assignment. Waiting for response..."
-        type="warning"
-        autoClose={8000}
-        onClose={() => setShowCallInitiatedAlert(false)}
-      />
-
       {/* Left Panel - Map */}
       <div className="w-3/5 h-full">
         <MapboxMapView
@@ -582,6 +587,8 @@ export default function Dashboard() {
           nextLoadPickup={selectedJourney?.assignedLoad ? { lat: selectedJourney.assignedLoad.pickupLat, lng: selectedJourney.assignedLoad.pickupLng } : undefined}
           nextLoadDrop={selectedJourney?.assignedLoad ? { lat: selectedJourney.assignedLoad.dropLat, lng: selectedJourney.assignedLoad.dropLng } : undefined}
           nextLoadRoute={nextLoadRoutes || undefined}
+          alerts={mapAlerts}
+          onAlertClose={(id) => setMapAlerts(prev => prev.filter(alert => alert.id !== id))}
         />
       </div>
 

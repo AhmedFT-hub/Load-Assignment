@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Map, { Marker, Source, Layer, MapRef } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import MapPinCard from './MapPinCard'
 
 const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ''
 
@@ -21,6 +22,15 @@ interface MapboxMapViewProps {
     toPickup?: Array<{ lat: number; lng: number }>
     toDestination?: Array<{ lat: number; lng: number }>
   }
+  alerts?: Array<{
+    id: string
+    position: { lat: number; lng: number }
+    title: string
+    message: string
+    type?: 'info' | 'success' | 'warning' | 'error'
+    show: boolean
+  }>
+  onAlertClose?: (id: string) => void
 }
 
 // Helper function to create a circle (geofence) around a point
@@ -66,6 +76,8 @@ export default function MapboxMapView({
   nextLoadPickup,
   nextLoadDrop,
   nextLoadRoute,
+  alerts = [],
+  onAlertClose,
 }: MapboxMapViewProps) {
   const mapRef = useRef<MapRef>(null)
   const [viewState, setViewState] = useState({
@@ -353,6 +365,19 @@ export default function MapboxMapView({
             )}
           </>
         )}
+
+        {/* Map Pin Alert Cards */}
+        {alerts.map((alert) => (
+          <MapPinCard
+            key={alert.id}
+            position={alert.position}
+            title={alert.title}
+            message={alert.message}
+            type={alert.type}
+            show={alert.show}
+            onClose={() => onAlertClose?.(alert.id)}
+          />
+        ))}
       </Map>
 
       {/* Legend */}
