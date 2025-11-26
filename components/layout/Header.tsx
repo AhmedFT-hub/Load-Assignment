@@ -38,7 +38,7 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-center px-4 md:px-8">
-        <nav className="flex items-center space-x-1">
+        <nav className="flex items-center space-x-1" style={{ pointerEvents: 'auto' }}>
           {navigation.map((item) => {
             const isActive = pathname === item.href
             const Icon = item.icon
@@ -48,7 +48,7 @@ export default function Header() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "group inline-flex h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50",
+                  "group inline-flex h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 cursor-pointer relative z-10",
                   isActive
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground"
