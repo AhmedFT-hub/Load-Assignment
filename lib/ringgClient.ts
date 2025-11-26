@@ -82,9 +82,9 @@ export async function initiateCall(
 
   // Get current time in Asia/Kolkata timezone for call scheduling
   // Format as ISO 8601 without timezone (naive datetime) - API requires format like "2025-11-24T15:30:00"
-  // Schedule at least 1 minute in the future to ensure it's not in the past
+  // Schedule just 5 seconds in the future for near-instant calls (API requires future time)
   const now = new Date()
-  const futureTime = new Date(now.getTime() + 60 * 1000) // Add 1 minute buffer
+  const futureTime = new Date(now.getTime() + 5 * 1000) // Add 5 seconds buffer for near-instant calls
   // Convert to UTC time string and format as ISO without timezone
   const scheduledAt = futureTime.toISOString().replace('Z', '').slice(0, 19) // Remove 'Z' and milliseconds: "2025-11-27T03:30:00"
 
@@ -248,9 +248,9 @@ export async function initiateDetourCall(
 
   // Get current time in Asia/Kolkata timezone for call scheduling
   // Format as ISO 8601 without timezone (naive datetime) - API requires format like "2025-11-24T15:30:00"
-  // Schedule at least 1 minute in the future to ensure it's not in the past
+  // Schedule just 5 seconds in the future for near-instant calls (API requires future time)
   const now = new Date()
-  const futureTime = new Date(now.getTime() + 60 * 1000) // Add 1 minute buffer
+  const futureTime = new Date(now.getTime() + 5 * 1000) // Add 5 seconds buffer for near-instant calls
   // Convert to UTC time string and format as ISO without timezone
   const scheduledAt = futureTime.toISOString().replace('Z', '').slice(0, 19) // Remove 'Z' and milliseconds: "2025-11-27T03:30:00"
 
