@@ -106,16 +106,27 @@ export async function initiateDetourCall(
   const agentId = process.env.RINGG_AGENT_ID
   const endpoint = process.env.RINGG_DETOUR_ENDPOINT || 'https://prod-api.ringg.ai/ca/api/v0/calling/outbound/individual'
 
+  console.log('Checking Ringg environment variables...')
+  console.log('RINGG_API_KEY:', apiKey ? 'SET' : 'NOT SET')
+  console.log('RINGG_FROM_NUMBER:', fromNumber ? 'SET' : 'NOT SET')
+  console.log('RINGG_AGENT_ID:', agentId ? 'SET' : 'NOT SET')
+
   if (!apiKey) {
-    throw new Error('RINGG_API_KEY is not configured')
+    const error = 'RINGG_API_KEY is not configured'
+    console.error(error)
+    throw new Error(error)
   }
 
   if (!fromNumber) {
-    throw new Error('RINGG_FROM_NUMBER is not configured')
+    const error = 'RINGG_FROM_NUMBER is not configured'
+    console.error(error)
+    throw new Error(error)
   }
 
   if (!agentId) {
-    throw new Error('RINGG_AGENT_ID is not configured')
+    const error = 'RINGG_AGENT_ID is not configured'
+    console.error(error)
+    throw new Error(error)
   }
 
   // Format phone number (ensure it starts with +)

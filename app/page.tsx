@@ -395,8 +395,17 @@ export default function Dashboard() {
             setRedzoneZone(zone)
             
             // Trigger detour call automatically when redzone alert appears
+            console.log('Redzone detected, attempting to trigger call:', {
+              selectedJourney: !!selectedJourney,
+              journeyId: selectedJourney?.id,
+              truckPosition,
+              zoneName: zone.name,
+              zoneId: zone.id,
+            })
+            
             if (selectedJourney && truckPosition) {
               try {
+                console.log('Calling trigger-detour-call API...')
                 const response = await fetch(`/api/journeys/${selectedJourney.id}/trigger-detour-call`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -407,9 +416,12 @@ export default function Dashboard() {
                   }),
                 })
 
+                console.log('API response status:', response.status)
                 const data = await response.json()
+                console.log('API response data:', data)
                 
                 if (data.success) {
+                  console.log('Detour call initiated successfully:', data.ringgResponse?.callId)
                   setDetourCallStatus('pending')
                   await addEvent({
                     type: 'CALL',
@@ -426,7 +438,7 @@ export default function Dashboard() {
                   await addEvent({
                     type: 'ERROR',
                     label: `Failed to initiate detour call: ${data.error || 'Unknown error'}`,
-                    details: { zoneName: zone.name },
+                    details: { zoneName: zone.name, error: data.error },
                   })
                 }
               } catch (error) {
@@ -434,9 +446,14 @@ export default function Dashboard() {
                 await addEvent({
                   type: 'ERROR',
                   label: `Error triggering detour call: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                  details: { zoneName: zone.name },
+                  details: { zoneName: zone.name, error: error instanceof Error ? error.message : String(error) },
                 })
               }
+            } else {
+              console.warn('Cannot trigger call - missing requirements:', {
+                selectedJourney: !!selectedJourney,
+                truckPosition: !!truckPosition,
+              })
             }
             
             // Add map alert with action buttons

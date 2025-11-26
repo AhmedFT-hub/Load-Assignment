@@ -8,7 +8,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log('trigger-detour-call API called with params:', params.id)
     const body = await request.json()
+    console.log('Request body:', body)
     const { zoneId, zoneName, currentPosition } = body
 
     const journey = await prisma.journey.findUnique({
@@ -16,11 +18,14 @@ export async function POST(
     })
 
     if (!journey) {
+      console.error('Journey not found:', params.id)
       return NextResponse.json(
         { error: 'Journey not found' },
         { status: 404 }
       )
     }
+
+    console.log('Journey found:', journey.id, 'Driver:', journey.driverName, 'Phone:', journey.driverPhone)
 
     // Create a call log for detour call
     const callLog = await prisma.callLog.create({
@@ -39,12 +44,21 @@ export async function POST(
     })
 
     // Initiate call via Ringg.ai for detour using the detour-specific endpoint
+    console.log('Initiating Ringg call with:', {
+      driverName: journey.driverName,
+      driverPhone: journey.driverPhone,
+      zoneName,
+      currentPosition,
+    })
+    
     const ringgResponse = await initiateDetourCall({
       driverName: journey.driverName,
       driverPhone: journey.driverPhone,
       zoneName: zoneName,
       currentPosition: currentPosition ? { lat: currentPosition.lat, lng: currentPosition.lng } : undefined,
     })
+    
+    console.log('Ringg response:', ringgResponse)
 
     // Check if call was successful
     if (!ringgResponse.success) {
