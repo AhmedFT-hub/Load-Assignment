@@ -22,15 +22,18 @@ async function runMigrations() {
     // Try normal migration first
     try {
       console.log('Running Prisma migrations...');
-      execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+      execSync('npx prisma migrate deploy', { stdio: 'inherit', encoding: 'utf8' });
       console.log('✓ Migrations completed successfully.');
       await prisma.$disconnect();
       return;
     } catch (migrateError) {
-      const errorOutput = migrateError.message || migrateError.toString();
+      // execSync throws an error object, check both message and stderr
+      const errorOutput = (migrateError.stderr || migrateError.stdout || migrateError.message || migrateError.toString()).toString();
+      
+      console.log('Migration error detected:', errorOutput.substring(0, 200));
       
       // If migration fails due to baseline issue (P3005), run SQL directly
-      if (errorOutput.includes('P3005') || errorOutput.includes('not empty')) {
+      if (errorOutput.includes('P3005') || errorOutput.includes('not empty') || errorOutput.includes('schema is not empty')) {
         console.log('Database has existing schema. Running migration SQL directly...');
         
         // Read and execute the migration SQL
