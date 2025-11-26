@@ -623,7 +623,7 @@ export default function Dashboard() {
           <TabsContent value="simulation" className="flex-1 mt-0 flex flex-col overflow-hidden">
             {/* Journey Selector with its own scroll */}
             <div className="flex-1 overflow-hidden">
-              <div className="p-4">
+              <div className="px-4 pt-4">
                 <JourneySelector
                   onSelectJourney={loadJourney}
                   selectedJourneyId={selectedJourney?.id}
