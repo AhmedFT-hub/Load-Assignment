@@ -219,12 +219,55 @@ export default function MapboxMapView({
         {/* Truck marker */}
         {truckPosition && (
           <>
-            <Marker longitude={truckPosition.lng} latitude={truckPosition.lat}>
+            <Marker 
+              longitude={truckPosition.lng} 
+              latitude={truckPosition.lat}
+              anchor="center"
+            >
               <div
-                className={`text-2xl ${isStoppage ? 'animate-pulse' : ''}`}
-                style={{ transform: `rotate(${truckHeading}deg)` }}
+                className={`${isStoppage ? 'animate-pulse' : ''}`}
+                style={{ 
+                  transform: `rotate(${truckHeading}deg)`,
+                  transformOrigin: 'center center',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
               >
-                🚚
+                <svg 
+                  width="32" 
+                  height="32" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+                >
+                  {/* Truck icon pointing upward (will rotate based on heading) */}
+                  <path 
+                    d="M18 18.5C18 19.3284 17.3284 20 16.5 20C15.6716 20 15 19.3284 15 18.5C15 17.6716 15.6716 17 16.5 17C17.3284 17 18 17.6716 18 18.5Z" 
+                    fill="#2563eb"
+                    stroke="#fff"
+                    strokeWidth="0.5"
+                  />
+                  <path 
+                    d="M9 18.5C9 19.3284 8.32843 20 7.5 20C6.67157 20 6 19.3284 6 18.5C6 17.6716 6.67157 17 7.5 17C8.32843 17 9 17.6716 9 18.5Z" 
+                    fill="#2563eb"
+                    stroke="#fff"
+                    strokeWidth="0.5"
+                  />
+                  <path 
+                    d="M1 6V15H5.26C5.50883 14.4022 6.11524 14 6.82812 14H8.17188C8.88476 14 9.49117 14.4022 9.74 15H14.26C14.5088 14.4022 15.1152 14 15.8281 14H17.1719C17.8848 14 18.4912 14.4022 18.74 15H23V11L20 8H15V6H1Z" 
+                    fill="#2563eb"
+                    stroke="#fff"
+                    strokeWidth="0.8"
+                  />
+                  <path 
+                    d="M15 8H19.5L21.5 10.5V11H15V8Z" 
+                    fill="#60a5fa"
+                  />
+                </svg>
               </div>
             </Marker>
 
