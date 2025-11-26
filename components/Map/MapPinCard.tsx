@@ -31,7 +31,8 @@ export default function MapPinCard({
   useEffect(() => {
     setIsVisible(show)
     
-    if (show && autoClose) {
+    // Don't auto-close if there are actions (user needs to interact)
+    if (show && autoClose && (!actions || actions.length === 0)) {
       const timer = setTimeout(() => {
         setIsVisible(false)
         onClose?.()
@@ -39,7 +40,7 @@ export default function MapPinCard({
       
       return () => clearTimeout(timer)
     }
-  }, [show, autoClose, onClose])
+  }, [show, autoClose, onClose, actions])
 
   if (!isVisible) return null
 

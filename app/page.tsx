@@ -92,9 +92,12 @@ export default function Dashboard() {
     try {
       const response = await fetch('/api/zones')
       const data = await response.json()
-      setZones(data)
+      const zonesArray = Array.isArray(data) ? data : []
+      setZones(zonesArray)
+      console.log('Loaded zones:', zonesArray.length, zonesArray.map(z => ({ name: z.name, category: z.category, coords: z.coordinates?.length })))
     } catch (error) {
       console.error('Error fetching zones:', error)
+      setZones([])
     }
   }
 
