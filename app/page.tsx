@@ -538,10 +538,14 @@ export default function Dashboard() {
       // Find closest point on detour route to current position
       const initialProgress = findClosestPointOnRoute(detour, truckPosition)
       
+      // Calculate initial position on detour route
+      const initialPosition = interpolatePosition(detour, initialProgress)
+      
       setDetourRoute(detour)
       setRoutePath(detour) // Update route to detour
       setTotalDistanceKm(detourTotalDistance) // Update total distance
       setProgress(initialProgress) // Start from closest point on detour route, not from beginning
+      setTruckPosition(initialPosition) // Update vehicle position to match detour route
       // DON'T reset completed path - preserve traveled path before detour
       // The completed path will continue to grow as vehicle moves on detour
       setIsOnDetour(true)
@@ -781,10 +785,13 @@ export default function Dashboard() {
                 detourTotalDistance += calculateDistance(detour[i - 1], detour[i])
               }
               
+              // Find closest point on detour route to current position
+              const initialProgress = truckPosition ? findClosestPointOnRoute(detour, truckPosition) : 0
+              
               setDetourRoute(detour)
               setRoutePath(detour) // Update route to detour
               setTotalDistanceKm(detourTotalDistance) // Update total distance
-              setProgress(0) // Reset progress for new route
+              setProgress(initialProgress) // Start from closest point on detour route
               // DON'T reset completed path - preserve traveled path before detour
               
               await addEvent({

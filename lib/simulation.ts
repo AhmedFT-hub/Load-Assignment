@@ -95,6 +95,8 @@ export function interpolatePosition(
 
 /**
  * Calculate simple Euclidean distance (for interpolation)
+ * Note: This is approximate for geographic coordinates but faster than Haversine
+ * For better accuracy, we should use Haversine, but for route interpolation this is usually sufficient
  */
 function calculateSimpleDistance(
   p1: { lat: number; lng: number },
@@ -102,7 +104,10 @@ function calculateSimpleDistance(
 ): number {
   const dLat = p2.lat - p1.lat
   const dLng = p2.lng - p1.lng
-  return Math.sqrt(dLat * dLat + dLng * dLng)
+  // Scale longitude by latitude to account for Earth's curvature
+  const latMid = (p1.lat + p2.lat) / 2
+  const latScale = Math.cos(latMid * Math.PI / 180)
+  return Math.sqrt(dLat * dLat + (dLng * latScale) * (dLng * latScale))
 }
 
 /**
