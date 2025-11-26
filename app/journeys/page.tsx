@@ -69,7 +69,10 @@ export default function JourneysPage() {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || 'Failed to create journey')
+        const errorMsg = data.details 
+          ? `${data.error}: ${data.details}` 
+          : data.error || 'Failed to create journey'
+        throw new Error(errorMsg)
       }
 
       // Reset form and refresh list

@@ -141,8 +141,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(journey, { status: 201 })
   } catch (error) {
     console.error('Error creating journey:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
+    console.error('Error details:', { message: errorMessage, stack: errorStack })
     return NextResponse.json(
-      { error: 'Failed to create journey' },
+      { 
+        error: 'Failed to create journey',
+        details: errorMessage,
+        ...(process.env.NODE_ENV === 'development' && { stack: errorStack })
+      },
       { status: 500 }
     )
   }
