@@ -286,8 +286,10 @@ export default function Dashboard() {
     setProgress(newProgress)
 
     // Calculate position and heading
+    // When on detour, use smaller increment to ensure we hit all path points
+    const progressIncrement = isOnDetour ? 0.0001 : 0.001
     const position = interpolatePosition(activeRoute, newProgress)
-    const nextProgress = Math.min(newProgress + 0.001, 1)
+    const nextProgress = Math.min(newProgress + progressIncrement, 1)
     const nextPosition = interpolatePosition(activeRoute, nextProgress)
     const heading = calculateHeading(position, nextPosition)
 
@@ -295,12 +297,13 @@ export default function Dashboard() {
     setTruckHeading(heading)
 
     // Update completed path with current position
-    // When at risk, ensure we're tracking every point on the path (don't skip)
+    // When at risk or on detour, ensure we're tracking every point on the path (don't skip)
     setCompletedPath(prev => {
       // Add current position if it's significantly different from last position
       const lastPos = prev[prev.length - 1]
-      // When at risk, use smaller threshold to capture more points and stay on path
-      const threshold = isAtRisk ? 0.0001 : 0.001
+      // When at risk or on detour, use smaller threshold to capture more points and stay on path
+      // This ensures the vehicle strictly follows the planned path
+      const threshold = (isAtRisk || isOnDetour) ? 0.0001 : 0.001
       if (!lastPos || 
           Math.abs(lastPos.lat - position.lat) > threshold || 
           Math.abs(lastPos.lng - position.lng) > threshold) {

@@ -197,6 +197,11 @@ export function updateProgress(
   const distanceTraveledKm = (adjustedSpeed / 3600) * deltaTimeSeconds
   const progressDelta = distanceTraveledKm / totalDistanceKm
   
-  return Math.min(currentProgress + progressDelta, 1)
+  // Ensure progress doesn't skip too much (especially important for detour routes)
+  // Cap the maximum progress increment to ensure we hit all path points
+  const maxProgressDelta = 0.01 // Maximum 1% progress per tick
+  const cappedProgressDelta = Math.min(progressDelta, maxProgressDelta)
+  
+  return Math.min(currentProgress + cappedProgressDelta, 1)
 }
 
