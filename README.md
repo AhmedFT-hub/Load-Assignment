@@ -1,6 +1,6 @@
-# Load Assignment Agent - Logistics AI Demo
+# Load Assignment - Logistics Platform
 
-A production-grade POC application demonstrating an intelligent load assignment system with real-time vehicle tracking, automated calling via Ringg.ai, and dynamic route simulation.
+A production-grade application demonstrating an intelligent load assignment system with real-time vehicle tracking, automated calling via Ringg.ai, and dynamic route simulation.
 
 ## 🎯 Features
 

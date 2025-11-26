@@ -6,7 +6,7 @@ import Header from '@/components/layout/Header'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Load Assignment Agent - Logistics AI Demo',
+  title: 'Load Assignment - Logistics Platform',
   description: 'Smart load assignment system with real-time tracking and automated calling',
 }
 

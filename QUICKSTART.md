@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get the Load Assignment Agent running in 5 minutes!
+Get the Load Assignment Platform running in 5 minutes!
 
 ## Prerequisites
 - Node.js 18+ installed
