@@ -28,10 +28,44 @@ export async function POST(
     console.log('Journey found:', journey.id, 'Driver:', journey.driverName, 'Phone:', journey.driverPhone)
 
     // Create a call log for detour call
+    // Note: loadId is required, so we need to create a dummy load or use a placeholder
+    // For detour calls, we'll use a special placeholder load ID
+    const DUMMY_LOAD_ID = 'detour-call-placeholder'
+    
+    // Check if dummy load exists, if not create it
+    let dummyLoad = await prisma.load.findUnique({
+      where: { id: DUMMY_LOAD_ID },
+    })
+    
+    if (!dummyLoad) {
+      try {
+        dummyLoad = await prisma.load.create({
+          data: {
+            id: DUMMY_LOAD_ID,
+            pickupCity: 'N/A',
+            pickupLat: 0,
+            pickupLng: 0,
+            dropCity: 'N/A',
+            dropLat: 0,
+            dropLng: 0,
+            commodity: 'Detour Call',
+            rate: 0,
+            expectedReportingTime: new Date(),
+            mode: 'N/A',
+            vehicleType: 'N/A',
+            status: 'EXHAUSTED',
+          },
+        })
+      } catch (error) {
+        console.error('Error creating dummy load:', error)
+        // If creation fails, try to continue anyway
+      }
+    }
+    
     const callLog = await prisma.callLog.create({
       data: {
         journeyId: journey.id,
-        loadId: '', // No load for detour calls
+        loadId: DUMMY_LOAD_ID, // Use placeholder for detour calls
         status: 'INITIATED',
         outcome: 'UNKNOWN',
         rawRequestPayload: {
