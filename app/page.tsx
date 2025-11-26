@@ -28,8 +28,8 @@ const MapboxMapView = dynamic(() => import('@/components/Map/MapboxMapView'), {
   loading: () => <div className="w-full h-full bg-gray-100 flex items-center justify-center">Loading map...</div>,
 })
 
-const BASE_SPEED_KMH = 60
-const SIMULATION_TICK_MS = 1000
+const BASE_SPEED_KMH = 120 // Increased from 60 for faster simulation
+const SIMULATION_TICK_MS = 500 // Reduced from 1000ms for smoother, faster updates
 const NEAR_DESTINATION_THRESHOLD_MINUTES = 30
 const UNLOADING_DURATION_SECONDS = 5
 
@@ -37,7 +37,7 @@ export default function Dashboard() {
   // Journey and simulation state
   const [selectedJourney, setSelectedJourney] = useState<Journey | null>(null)
   const [isSimulating, setIsSimulating] = useState(false)
-  const [speed, setSpeed] = useState(1)
+  const [speed, setSpeed] = useState(10) // Start with 10x speed by default
   const [progress, setProgress] = useState(0)
   const [simulationTime, setSimulationTime] = useState(0)
   const [routePath, setRoutePath] = useState<Array<{ lat: number; lng: number }>>([])
