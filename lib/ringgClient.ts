@@ -145,7 +145,7 @@ export async function initiateDetourCall(
         ? `${request.currentPosition.lat},${request.currentPosition.lng}` 
         : undefined,
     },
-    call_config: {
+      call_config: {
       idle_timeout_warning: 10,
       idle_timeout_end: 15,
       max_call_length: 300,
@@ -157,7 +157,7 @@ export async function initiateDetourCall(
       },
       call_time: {
         call_start_time: '08:00',
-        call_end_time: '20:00',
+        call_end_time: '07:59',
         timezone: 'Asia/Kolkata',
         scheduled_at: scheduledAt,
       },
