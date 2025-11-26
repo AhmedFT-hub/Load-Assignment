@@ -120,8 +120,21 @@ export async function POST(
     })
   } catch (error) {
     console.error('Error triggering detour call:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
+    console.error('Error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      error: error,
+    })
+    
     return NextResponse.json(
-      { error: 'Failed to trigger detour call' },
+      { 
+        error: 'Failed to trigger detour call',
+        details: errorMessage,
+        ...(process.env.NODE_ENV === 'development' && { stack: errorStack })
+      },
       { status: 500 }
     )
   }

@@ -230,15 +230,24 @@ export async function initiateDetourCall(
     }
   } catch (error) {
     console.error('Failed to initiate detour call:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
+    console.error('Ringg client error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      error: error,
+    })
+    
     if (error instanceof Error) {
       return {
         success: false,
-        error: `Failed to initiate detour call: ${error.message}`,
+        error: `Failed to initiate detour call: ${errorMessage}`,
       }
     }
     return {
       success: false,
-      error: 'Failed to initiate detour call: Unknown error',
+      error: `Failed to initiate detour call: ${String(error)}`,
     }
   }
 }
