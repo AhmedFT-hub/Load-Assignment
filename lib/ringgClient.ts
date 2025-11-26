@@ -10,6 +10,13 @@ export interface RinggCallRequest {
   vehicleNumber: string
   currentLocation?: { lat: number; lng: number }
   etaMinutes?: number
+  // Load details for custom_args_values
+  pickupCity?: string
+  dropCity?: string
+  commodity?: string
+  rate?: number
+  companyName?: string
+  appointmentDate?: string
 }
 
 export interface RinggDetourCallRequest {
@@ -28,6 +35,7 @@ export interface RinggCallResponse {
 
 /**
  * Initiate a call via Ringg.ai API (for load assignment)
+ * Uses the production API endpoint format with X-API-KEY authentication
  * @param request - Call request details
  * @returns Promise with call response
  */
@@ -35,59 +43,154 @@ export async function initiateCall(
   request: RinggCallRequest
 ): Promise<RinggCallResponse> {
   const apiKey = process.env.RINGG_API_KEY
-  const endpoint = process.env.RINGG_CALL_ENDPOINT || 'https://api.ringg.ai/v1/calls'
+  const fromNumber = process.env.RINGG_FROM_NUMBER
+  const agentId = process.env.RINGG_LOAD_AGENT_ID || process.env.RINGG_AGENT_ID // Use load-specific agent ID if available
+  const endpoint = process.env.RINGG_CALL_ENDPOINT || 'https://prod-api.ringg.ai/ca/api/v0/calling/outbound/individual'
+
+  console.log('Checking Ringg environment variables for load assignment call...')
+  console.log('RINGG_API_KEY:', apiKey ? 'SET' : 'NOT SET')
+  console.log('RINGG_FROM_NUMBER:', fromNumber ? 'SET' : 'NOT SET')
+  console.log('RINGG_LOAD_AGENT_ID or RINGG_AGENT_ID:', agentId ? 'SET' : 'NOT SET')
 
   if (!apiKey) {
-    throw new Error('RINGG_API_KEY is not configured')
+    const error = 'RINGG_API_KEY is not configured'
+    console.error(error)
+    throw new Error(error)
+  }
+
+  if (!fromNumber) {
+    const error = 'RINGG_FROM_NUMBER is not configured'
+    console.error(error)
+    throw new Error(error)
+  }
+
+  if (!agentId) {
+    const error = 'RINGG_LOAD_AGENT_ID or RINGG_AGENT_ID is not configured'
+    console.error(error)
+    throw new Error(error)
+  }
+
+  // Format phone number (ensure it starts with +)
+  const mobileNumber = request.driverPhone.startsWith('+') 
+    ? request.driverPhone 
+    : `+${request.driverPhone}`
+
+  // Format from number (ensure it starts with +)
+  const formattedFromNumber = fromNumber.startsWith('+')
+    ? fromNumber
+    : `+${fromNumber}`
+
+  // Get current time in Asia/Kolkata timezone for call scheduling
+  const now = new Date()
+  const scheduledAt = now.toISOString()
+
+  // Format appointment date (use provided date or default to tomorrow)
+  const appointmentDate = request.appointmentDate || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+  // Build custom_args_values for load assignment
+  const customArgsValues: Record<string, string> = {
+    company_name: request.companyName || 'Freight Logistics',
+    appointment_date: appointmentDate,
+    product_name: request.commodity || 'Freight Load',
+  }
+  
+  // Add load-specific details if available
+  if (request.pickupCity && request.dropCity) {
+    customArgsValues.pickup_city = request.pickupCity
+    customArgsValues.drop_city = request.dropCity
+  }
+  
+  if (request.rate) {
+    customArgsValues.rate = `₹${request.rate.toLocaleString('en-IN')}`
   }
 
   const payload = {
-    phone: request.driverPhone,
-    metadata: {
-      journeyId: request.journeyId,
-      loadId: request.loadId,
-      driverName: request.driverName,
-      vehicleNumber: request.vehicleNumber,
-      currentLocation: request.currentLocation,
-      etaMinutes: request.etaMinutes,
+    name: request.driverName.toUpperCase(),
+    mobile_number: mobileNumber,
+    agent_id: agentId,
+    from_number: formattedFromNumber,
+    custom_args_values: customArgsValues,
+    call_config: {
+      idle_timeout_warning: 10,
+      idle_timeout_end: 15,
+      max_call_length: 240, // 4 minutes for load assignment calls
+      call_retry_config: {
+        retry_count: 3,
+        retry_busy: 30,
+        retry_not_picked: 30,
+        retry_failed: 30,
+      },
+      call_time: {
+        call_start_time: '08:00',
+        call_end_time: '07:59',
+        timezone: 'Asia/Kolkata',
+        scheduled_at: scheduledAt,
+      },
     },
-    // Note: No script text - script is managed in Ringg dashboard
   }
 
   try {
+    console.log('Initiating load assignment call to:', endpoint)
+    console.log('Payload:', JSON.stringify(payload, null, 2))
+    
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'X-API-KEY': apiKey, // Use X-API-KEY for this endpoint
       },
       body: JSON.stringify(payload),
     })
 
-    const data = await response.json()
+    const responseText = await response.text()
+    console.log('Ringg API response status:', response.status)
+    console.log('Ringg API response:', responseText)
 
-    if (!response.ok) {
+    let data
+    try {
+      data = JSON.parse(responseText)
+    } catch (e) {
+      // If response is not JSON, return error
       return {
         success: false,
-        error: data.error || data.message || `API error: ${response.status}`,
+        error: `Invalid response format: ${responseText.substring(0, 200)}`,
       }
+    }
+
+    if (!response.ok) {
+      console.error('Ringg API error:', data)
+      return {
+        success: false,
+        error: data.error || data.message || data.detail || `API error: ${response.status} ${response.statusText}`,
+      }
+    }
+
+    // Extract call ID from response (adjust based on actual response structure)
+    const callId = data.call_id || data.callId || data.id || data.data?.call_id || data.data?.id
+
+    if (!callId) {
+      console.warn('No call ID found in response:', data)
     }
 
     return {
       success: true,
-      callId: data.callId || data.id,
-      message: data.message || 'Call initiated successfully',
+      callId: callId,
+      message: data.message || 'Load assignment call initiated successfully',
     }
   } catch (error) {
-    if (error instanceof Error) {
-      return {
-        success: false,
-        error: `Failed to initiate call: ${error.message}`,
-      }
-    }
+    console.error('Failed to initiate load assignment call:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
+    console.error('Ringg client error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      error: error,
+    })
+    
     return {
       success: false,
-      error: 'Failed to initiate call: Unknown error',
+      error: `Failed to initiate call: ${errorMessage}`,
     }
   }
 }

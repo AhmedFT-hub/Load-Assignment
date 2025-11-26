@@ -144,6 +144,14 @@ export async function POST(
       driverPhone: journey.driverPhone,
       vehicleNumber: journey.vehicleNumber,
       etaMinutes: journey.currentEtaMinutes || undefined,
+      pickupCity: nearestLoad.pickupCity,
+      dropCity: nearestLoad.dropCity,
+      commodity: nearestLoad.commodity,
+      rate: nearestLoad.rate,
+      companyName: journey.transporterName || 'Freight Logistics',
+      appointmentDate: nearestLoad.expectedReportingTime 
+        ? new Date(nearestLoad.expectedReportingTime).toISOString().split('T')[0]
+        : undefined,
     })
     
     // Update call log with Ringg response
