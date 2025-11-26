@@ -40,9 +40,17 @@ export default function JourneySelector({ onSelectJourney, selectedJourneyId }: 
       
       const response = await fetch(`/api/journeys?${params.toString()}`)
       const data = await response.json()
-      setJourneys(data)
+      
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setJourneys(data)
+      } else {
+        console.error('API returned non-array data:', data)
+        setJourneys([])
+      }
     } catch (error) {
       console.error('Error fetching journeys:', error)
+      setJourneys([])
     } finally {
       setLoading(false)
     }
