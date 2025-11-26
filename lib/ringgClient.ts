@@ -80,12 +80,13 @@ export async function initiateCall(
     ? fromNumber
     : `+${fromNumber}`
 
-  // Get current time in Asia/Kolkata timezone for call scheduling
+  // Get current time in UTC for call scheduling
   // Format as ISO 8601 without timezone (naive datetime) - API requires format like "2025-11-24T15:30:00"
-  // Schedule just 5 seconds in the future for near-instant calls (API requires future time)
+  // Schedule 30 seconds in the future to ensure it's always in the future (accounts for API processing time and timezone interpretation)
   const now = new Date()
-  const futureTime = new Date(now.getTime() + 5 * 1000) // Add 5 seconds buffer for near-instant calls
+  const futureTime = new Date(now.getTime() + 30 * 1000) // Add 30 seconds buffer
   // Convert to UTC time string and format as ISO without timezone
+  // The API interprets this as UTC time, so we use UTC directly
   const scheduledAt = futureTime.toISOString().replace('Z', '').slice(0, 19) // Remove 'Z' and milliseconds: "2025-11-27T03:30:00"
 
   // Format appointment date (use provided date or default to tomorrow)
@@ -246,12 +247,13 @@ export async function initiateDetourCall(
     ? fromNumber
     : `+${fromNumber}`
 
-  // Get current time in Asia/Kolkata timezone for call scheduling
+  // Get current time in UTC for call scheduling
   // Format as ISO 8601 without timezone (naive datetime) - API requires format like "2025-11-24T15:30:00"
-  // Schedule just 5 seconds in the future for near-instant calls (API requires future time)
+  // Schedule 30 seconds in the future to ensure it's always in the future (accounts for API processing time and timezone interpretation)
   const now = new Date()
-  const futureTime = new Date(now.getTime() + 5 * 1000) // Add 5 seconds buffer for near-instant calls
+  const futureTime = new Date(now.getTime() + 30 * 1000) // Add 30 seconds buffer
   // Convert to UTC time string and format as ISO without timezone
+  // The API interprets this as UTC time, so we use UTC directly
   const scheduledAt = futureTime.toISOString().replace('Z', '').slice(0, 19) // Remove 'Z' and milliseconds: "2025-11-27T03:30:00"
 
   // Build custom_args_values (only include defined values)
