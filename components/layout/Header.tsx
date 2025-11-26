@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MapPin, PackageSearch, Truck } from 'lucide-react'
+import { MapPin, PackageSearch, Truck, Layers } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export default function Header() {
@@ -26,6 +26,12 @@ export default function Header() {
       href: '/loads',
       icon: PackageSearch,
       description: 'Available cargo'
+    },
+    {
+      name: 'Zones',
+      href: '/zones',
+      icon: Layers,
+      description: 'Manage risk zones'
     },
   ]
 

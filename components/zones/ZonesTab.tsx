@@ -114,7 +114,7 @@ export default function ZonesTab({
         </ScrollArea>
       )}
 
-      {isDrawing && drawingCoordinates.length < 3 && (
+      {isDrawing && (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center space-y-2">
