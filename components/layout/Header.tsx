@@ -50,13 +50,17 @@ export default function Header() {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={(e) => {
+                  console.log('Header link clicked:', item.href)
+                  // Allow default navigation
+                }}
                 className={cn(
                   "group inline-flex h-10 items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
                   isActive
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground"
                 )}
-                style={{ position: 'relative', zIndex: 103 }}
+                style={{ position: 'relative', zIndex: 103, pointerEvents: 'auto' }}
               >
                 <Icon className="mr-2 h-4 w-4" />
                 {item.name}
