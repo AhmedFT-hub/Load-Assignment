@@ -32,6 +32,7 @@ export default function JourneysPage() {
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchJourneys()
@@ -94,6 +95,31 @@ export default function JourneysPage() {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleDelete = async (journeyId: string, journeyRoute: string) => {
+    if (!window.confirm(`Are you sure you want to delete the journey "${journeyRoute}"? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      setDeletingId(journeyId)
+      const response = await fetch(`/api/journeys/${journeyId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to delete journey')
+      }
+
+      // Refresh the list
+      fetchJourneys()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete journey')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -395,12 +421,22 @@ export default function JourneysPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <a
-                          href={`/?journey=${journey.id}`}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                        >
-                          Simulate →
-                        </a>
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={`/?journey=${journey.id}`}
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                          >
+                            Simulate →
+                          </a>
+                          <button
+                            onClick={() => handleDelete(journey.id, `${journey.originCity} → ${journey.destinationCity}`)}
+                            disabled={deletingId === journey.id}
+                            className="text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Delete journey"
+                          >
+                            {deletingId === journey.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

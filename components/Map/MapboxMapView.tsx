@@ -5,6 +5,7 @@ import Map, { Marker, Source, Layer, MapRef } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import MapPinCard from './MapPinCard'
 import { Zone } from '@/types'
+import { Package } from 'lucide-react'
 
 const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ''
 
@@ -104,6 +105,7 @@ export default function MapboxMapView({
     zoom: 4,
   })
   const [drawingPoints, setDrawingPoints] = useState<Array<{ lat: number; lng: number }>>(drawingCoordinates)
+  const [isMapLoaded, setIsMapLoaded] = useState(false)
 
   // Sync drawing points with prop
   useEffect(() => {
@@ -246,6 +248,7 @@ export default function MapboxMapView({
         {...viewState}
         onMoveEnd={evt => setViewState(evt.viewState)}
         onClick={handleMapClick}
+        onLoad={() => setIsMapLoaded(true)}
         mapStyle="mapbox://styles/mapbox/streets-v12"
         mapboxAccessToken={mapboxToken}
         cursor={isDrawingZone ? 'crosshair' : 'default'}
@@ -268,8 +271,10 @@ export default function MapboxMapView({
         {nextLoadPickup && (
           <Marker longitude={nextLoadPickup.lng} latitude={nextLoadPickup.lat}>
             <div className="relative">
-              <div className="w-6 h-6 bg-green-500 rounded-full border-2 border-white shadow-lg animate-pulse" />
-              <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs px-2 py-0.5 rounded whitespace-nowrap">
+              <div className="relative w-10 h-10 bg-green-500 rounded-full border-[3px] border-white shadow-lg animate-pulse flex items-center justify-center">
+                <Package className="w-5 h-5 text-white" strokeWidth={2.5} />
+              </div>
+              <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs px-2 py-1 rounded shadow-md whitespace-nowrap font-medium">
                 Next Pickup
               </div>
             </div>
@@ -289,7 +294,7 @@ export default function MapboxMapView({
         )}
 
         {/* 10km Geofence around destination */}
-        {destinationGeofence && (
+        {isMapLoaded && destinationGeofence && (
           <Source id="destination-geofence" type="geojson" data={destinationGeofence}>
             <Layer
               id="geofence-fill"
@@ -313,7 +318,7 @@ export default function MapboxMapView({
         )}
 
         {/* Zones */}
-        {zonesGeoJSON.map((zoneGeoJSON, index) => {
+        {isMapLoaded && zonesGeoJSON.length > 0 && zonesGeoJSON.map((zoneGeoJSON, index) => {
           const zone = zones[index]
           if (!zone) return null
           const color = zone.color || '#6366f1'
@@ -341,7 +346,7 @@ export default function MapboxMapView({
         })}
 
         {/* Drawing polygon */}
-        {drawingPolygonGeoJSON && (
+        {isMapLoaded && drawingPolygonGeoJSON && (
           <Source id="drawing-polygon" type="geojson" data={drawingPolygonGeoJSON}>
             <Layer
               id="drawing-polygon-fill"
@@ -372,7 +377,7 @@ export default function MapboxMapView({
         ))}
 
         {/* Planned route (dotted) - remaining path */}
-        {routeGeoJSON && (
+        {isMapLoaded && routeGeoJSON && (
           <Source id="route" type="geojson" data={routeGeoJSON}>
             <Layer
               id="route-layer"
@@ -388,7 +393,7 @@ export default function MapboxMapView({
         )}
 
         {/* Completed path (solid) - already traveled */}
-        {completedGeoJSON && (
+        {isMapLoaded && completedGeoJSON && (
           <Source id="completed-route" type="geojson" data={completedGeoJSON}>
             <Layer
               id="completed-route-layer"
@@ -403,7 +408,7 @@ export default function MapboxMapView({
         )}
 
         {/* Next load route - to pickup */}
-        {toPickupGeoJSON && (
+        {isMapLoaded && toPickupGeoJSON && (
           <Source id="route-to-pickup" type="geojson" data={toPickupGeoJSON}>
             <Layer
               id="route-to-pickup-layer"
@@ -419,7 +424,7 @@ export default function MapboxMapView({
         )}
 
         {/* Next load route - to destination */}
-        {toDestinationGeoJSON && (
+        {isMapLoaded && toDestinationGeoJSON && (
           <Source id="route-to-destination" type="geojson" data={toDestinationGeoJSON}>
             <Layer
               id="route-to-destination-layer"
@@ -435,7 +440,7 @@ export default function MapboxMapView({
         )}
 
         {/* Detour route (dotted green line) */}
-        {detourGeoJSON && (
+        {isMapLoaded && detourGeoJSON && (
           <Source id="detour-route" type="geojson" data={detourGeoJSON}>
             <Layer
               id="detour-route-layer"

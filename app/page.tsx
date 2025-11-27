@@ -83,6 +83,7 @@ export default function Dashboard() {
   const [originalRoutePath, setOriginalRoutePath] = useState<Array<{ lat: number; lng: number }>>([])
   const [epodCardShown, setEpodCardShown] = useState(false)
   const [fragilityRiskCardShown, setFragilityRiskCardShown] = useState(false)
+  const [waitingForEpodBeforeNextPickup, setWaitingForEpodBeforeNextPickup] = useState<{ loadData: any } | null>(null)
 
   const simulationInterval = useRef<NodeJS.Timeout | null>(null)
   const lastTickTime = useRef<number>(Date.now())
@@ -514,14 +515,57 @@ export default function Dashboard() {
           details: {},
         })
 
-        // Check if there's an assigned load
-        if (selectedJourney.assignedLoadId) {
+        // Show ePOD card first, then route to next pickup if there's an assigned load
+        if (!epodCardShown && truckPosition) {
+          setEpodCardShown(true)
+          const epodValidationUrl = process.env.NEXT_PUBLIC_EPOD_VALIDATION_URL || 'https://epod.example.com/validate'
+          setMapAlerts(prev => [...prev, {
+            id: 'epod-submission',
+            position: truckPosition,
+            title: 'ePOD Submission Required',
+            message: 'Please submit the electronic Proof of Delivery (ePOD) for this delivery.',
+            type: 'info',
+            show: true,
+            actions: [
+              { 
+                label: 'Validate', 
+                action: 'validate_epod',
+                redirectUrl: epodValidationUrl
+              },
+            ],
+          }])
+          
           await addEvent({
             type: 'INFO',
-            label: 'Starting next load journey',
-            details: { loadId: selectedJourney.assignedLoadId },
+            label: 'ePOD submission card displayed',
+            details: { position: selectedJourney.destinationCity },
           })
-          // TODO: Implement next load route simulation
+        }
+
+        // Check if there's an assigned load - wait for ePOD to be closed first
+        if (selectedJourney.assignedLoadId && truckPosition) {
+          // Refetch journey to ensure we have the latest assignedLoad data
+          let loadData = selectedJourney.assignedLoad
+          if (!loadData) {
+            try {
+              const journeyResponse = await fetch(`/api/journeys/${selectedJourney.id}`)
+              const updatedJourney = await journeyResponse.json()
+              loadData = updatedJourney.assignedLoad
+              setSelectedJourney(updatedJourney)
+            } catch (error) {
+              console.error('Error fetching journey data:', error)
+            }
+          }
+          
+          if (loadData) {
+            // Store load data and wait for ePOD card to be closed
+            setWaitingForEpodBeforeNextPickup({ loadData })
+            await addEvent({
+              type: 'INFO',
+              label: 'Waiting for ePOD completion before routing to next pickup',
+              details: { loadId: selectedJourney.assignedLoadId },
+            })
+          }
         } else {
           setJourneyStatus('COMPLETED')
           await fetch(`/api/journeys/${selectedJourney.id}`, {
@@ -721,27 +765,79 @@ export default function Dashboard() {
     setJourneyStatus('AT_RISK')
   }
 
-  // Calculate alternate route avoiding redzones
-  const calculateDetourRoute = async (zone: Zone) => {
+  // Calculate alternate route avoiding ALL redzones along the route
+  const calculateDetourRoute = async (triggerZone: Zone) => {
     if (!selectedJourney || !truckPosition) return null
 
     try {
-      // For now, use a simple approach: calculate route avoiding zone center
-      // In production, you'd use Mapbox Directions API with avoidances parameter
+      // Find ALL redzones that intersect with the route
+      const routeToCheck = originalRoutePath.length > 0 ? originalRoutePath : routePath
+      const redzones = zones.filter(z => 
+        (z.category === 'HIGH_RISK' || z.category === 'THEFT' || z.category === 'PILFERAGE') &&
+        z.coordinates && z.coordinates.length >= 3
+      )
+      
+      // Check which redzones intersect with the route
+      const zonesToAvoid: Zone[] = []
+      
+      for (const zone of redzones) {
+        // Check if route intersects with this zone
+        let intersects = false
+        
+        // Check every point on the route to see if it's within or too close to the zone
+        for (const routePoint of routeToCheck) {
+          const distToZone = distanceToPolygon(routePoint, zone.coordinates)
+          // If any point is within 5km of the zone, we need to avoid it
+          if (distToZone <= 5) {
+            intersects = true
+            break
+          }
+        }
+        
+        // Also check if the trigger zone is the one we're checking (always include it)
+        if (intersects || zone.id === triggerZone.id) {
+          zonesToAvoid.push(zone)
+        }
+      }
+      
+      console.log(`Found ${zonesToAvoid.length} redzones to avoid along the route`)
+      
+      // Calculate detour route avoiding ALL redzones
       const response = await fetch('/api/directions/detour', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           origin: truckPosition,
           destination: { lat: selectedJourney.destinationLat, lng: selectedJourney.destinationLng },
-          avoidZones: [zone],
-          originalRoute: originalRoutePath.length > 0 ? originalRoutePath : routePath, // Pass original route
+          avoidZones: zonesToAvoid,
+          originalRoute: routeToCheck,
         }),
       })
 
       if (response.ok) {
         const data = await response.json()
-        return convertMapboxCoordinates(data.routes[0].geometry.coordinates)
+        const detourPath = convertMapboxCoordinates(data.routes[0].geometry.coordinates)
+        
+        // Validate that the detour route doesn't intersect with any redzones
+        let isValid = true
+        for (const zone of zonesToAvoid) {
+          for (const point of detourPath) {
+            const distToZone = distanceToPolygon(point, zone.coordinates)
+            if (distToZone <= 2) { // Strict: must be at least 2km away from any redzone
+              isValid = false
+              console.warn(`Detour route intersects with zone ${zone.name} at distance ${distToZone.toFixed(2)}km`)
+              break
+            }
+          }
+          if (!isValid) break
+        }
+        
+        if (!isValid) {
+          console.error('Calculated detour route still intersects with redzones, attempting recalculation with stricter parameters')
+          // Could retry with different parameters or return null to use fallback
+        }
+        
+        return detourPath
       }
     } catch (error) {
       console.error('Error calculating detour route:', error)
@@ -862,6 +958,10 @@ export default function Dashboard() {
         for (let i = 1; i < pickupPath.length; i++) {
           totalDistance += calculateDistance(pickupPath[i - 1], pickupPath[i])
         }
+        
+        // Clear detour state - we're moving to a new pickup, not continuing detour
+        setDetourRoute(null)
+        setIsOnDetour(false)
         
         // Update route to go to pickup location
         setRoutePath(pickupPath)
@@ -1110,6 +1210,10 @@ export default function Dashboard() {
                   totalDistance += calculateDistance(pickupPath[i - 1], pickupPath[i])
                 }
                 
+                // Clear detour state - we're moving to a new pickup, not continuing detour
+                setDetourRoute(null)
+                setIsOnDetour(false)
+                
                 // Update route to go to pickup location
                 setRoutePath(pickupPath)
                 setTotalDistanceKm(totalDistance)
@@ -1302,7 +1406,78 @@ export default function Dashboard() {
           nextLoadDrop={selectedJourney?.assignedLoad ? { lat: selectedJourney.assignedLoad.dropLat, lng: selectedJourney.assignedLoad.dropLng } : undefined}
           nextLoadRoute={nextLoadRoutes || undefined}
           alerts={mapAlerts}
-          onAlertClose={(id) => setMapAlerts(prev => prev.filter(alert => alert.id !== id))}
+          onAlertClose={async (id) => {
+            setMapAlerts(prev => prev.filter(alert => alert.id !== id))
+            
+            // If ePOD card was closed and we're waiting to route to next pickup
+            if (id === 'epod-submission' && waitingForEpodBeforeNextPickup && truckPosition) {
+              const { loadData } = waitingForEpodBeforeNextPickup
+              setWaitingForEpodBeforeNextPickup(null)
+              
+              await addEvent({
+                type: 'INFO',
+                label: 'ePOD completed - Starting next load journey',
+                details: { loadId: loadData.id },
+              })
+              
+              try {
+                // Clear detour state - we're moving to a new pickup, not continuing detour
+                setDetourRoute(null)
+                setIsOnDetour(false)
+                
+                // Plot path from current position (destination) to load pickup location
+                const directionsResponse = await fetch('/api/directions', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    origin: truckPosition,
+                    destination: { lat: loadData.pickupLat, lng: loadData.pickupLng },
+                  }),
+                })
+
+                if (directionsResponse.ok) {
+                  const directionsData = await directionsResponse.json()
+                  const pickupPath = convertMapboxCoordinates(directionsData.routes[0].geometry.coordinates)
+                  
+                  // Calculate total distance
+                  let totalDistance = 0
+                  for (let i = 1; i < pickupPath.length; i++) {
+                    totalDistance += calculateDistance(pickupPath[i - 1], pickupPath[i])
+                  }
+                  
+                  // Update route to go to pickup location
+                  setRoutePath(pickupPath)
+                  setTotalDistanceKm(totalDistance)
+                  setProgress(0)
+                  setCompletedPath([truckPosition]) // Start from current position
+                  
+                  // Fetch visualization routes (destination to pickup, pickup to drop)
+                  await fetchNextLoadRoutes(loadData)
+                  
+                  // Resume simulation
+                  setIsSimulating(true)
+                  setJourneyStatus('IN_TRANSIT')
+                  
+                  await addEvent({
+                    type: 'INFO',
+                    label: `Routing to pickup: ${loadData.pickupCity}`,
+                    details: {
+                      pickupCity: loadData.pickupCity,
+                      dropCity: loadData.dropCity,
+                      distanceKm: totalDistance.toFixed(1),
+                    },
+                  })
+                }
+              } catch (error) {
+                console.error('Error plotting path to pickup after ePOD:', error)
+                await addEvent({
+                  type: 'ERROR',
+                  label: 'Failed to calculate route to pickup',
+                  details: { error: error instanceof Error ? error.message : 'Unknown error' },
+                })
+              }
+            }
+          }}
           onAlertAction={(id, action) => {
             if (action === 'detour') {
               handleDetourAction()
@@ -1310,7 +1485,7 @@ export default function Dashboard() {
               handleContinueOnSameRoute()
             } else if (action === 'validate_epod') {
               // Redirect is handled by MapPinCard component via redirectUrl
-              // Just log the event
+              // Card will be closed automatically by MapPinCard component
               addEvent({
                 type: 'INFO',
                 label: 'ePOD validation initiated',

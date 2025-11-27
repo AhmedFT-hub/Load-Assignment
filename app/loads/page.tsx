@@ -32,6 +32,8 @@ export default function LoadsPage() {
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchLoads()
@@ -91,6 +93,78 @@ export default function LoadsPage() {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleDelete = async (loadId: string, loadRoute: string) => {
+    if (!window.confirm(`Are you sure you want to delete the load "${loadRoute}"? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      setDeletingId(loadId)
+      const response = await fetch(`/api/loads/${loadId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to delete load')
+      }
+
+      // Refresh the list
+      fetchLoads()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete load')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const handleDuplicate = async (load: Load) => {
+    try {
+      setDuplicatingId(load.id)
+      
+      // Convert dates to ISO strings if they're Date objects
+      const expectedReportingTime = load.expectedReportingTime instanceof Date
+        ? load.expectedReportingTime.toISOString().slice(0, 16)
+        : new Date(load.expectedReportingTime).toISOString().slice(0, 16)
+      
+      const expectedUnloadingTime = load.expectedUnloadingTime
+        ? (load.expectedUnloadingTime instanceof Date
+            ? load.expectedUnloadingTime.toISOString().slice(0, 16)
+            : new Date(load.expectedUnloadingTime).toISOString().slice(0, 16))
+        : ''
+      
+      // Create a duplicate load with the same data but status set to AVAILABLE
+      const response = await fetch('/api/loads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pickupCity: load.pickupCity,
+          dropCity: load.dropCity,
+          commodity: load.commodity,
+          rate: load.rate,
+          expectedReportingTime: expectedReportingTime,
+          expectedUnloadingTime: expectedUnloadingTime || undefined,
+          mode: load.mode,
+          vehicleType: load.vehicleType,
+          specialInstructions: load.specialInstructions || '',
+          slaHours: load.slaHours || '',
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to duplicate load')
+      }
+
+      // Refresh the list
+      fetchLoads()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to duplicate load')
+    } finally {
+      setDuplicatingId(null)
     }
   }
 
@@ -380,6 +454,7 @@ export default function LoadsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reporting</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -400,6 +475,26 @@ export default function LoadsPage() {
                           {load.status}
                         </span>
                       </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleDuplicate(load)}
+                            disabled={duplicatingId === load.id || deletingId === load.id}
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Duplicate load"
+                          >
+                            {duplicatingId === load.id ? 'Duplicating...' : 'Duplicate'}
+                          </button>
+                          <button
+                            onClick={() => handleDelete(load.id, `${load.pickupCity} → ${load.dropCity}`)}
+                            disabled={deletingId === load.id || duplicatingId === load.id}
+                            className="text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Delete load"
+                          >
+                            {deletingId === load.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -411,5 +506,6 @@ export default function LoadsPage() {
     </div>
   )
 }
+
 
 
