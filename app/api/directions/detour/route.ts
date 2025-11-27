@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
 
     // Build route segment by segment, avoiding each redzone and rejoining after each zone ends
     const routeSegments: Array<{ lat: number; lng: number }> = []
+    const waypoints: Array<{ lat: number; lng: number }> = []
     let zoneSegments: Array<{ entryIndex: number, exitIndex: number, entry: { lat: number; lng: number }, exit: { lat: number; lng: number }, zone: Zone }> = []
     
     if (originalRoute && originalRoute.length > 0) {
